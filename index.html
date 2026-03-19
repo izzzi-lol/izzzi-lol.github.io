@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>TERMINAL O5</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;600;700&family=Inter:wght@400;700&display=swap">
+    <style>
+        :root {
+            --accent: 28, 37, 56;
+            --head-font: 'IBM Plex Sans', sans-serif;
+            --mono-font: 'JetBrains Mono', monospace;
+            --page-font: 'Inter', sans-serif;
+        }
+        body {
+            font-family: var(--page-font); background-color: #0a0a0a; color: #d1d1d1;
+            margin: 0; padding: 20px; line-height: 1.5;
+        }
+        #container {
+            max-width: 900px; margin: 0 auto; border: 1px solid #333;
+            background: #111; padding: 40px; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            min-height: 80vh;
+        }
+        #header { text-align: center; border-bottom: 3px double #444; padding-bottom: 20px; margin-bottom: 20px;}
+        #header h1 { font-family: var(--head-font); color: #eee; margin: 0; letter-spacing: 2px; }
+        #header h2 { font-size: 0.9em; color: #888; margin: 5px 0 0; }
+        
+        /* Стили консоли */
+        #console-area { font-family: var(--mono-font); background: #000; padding: 15px; border-left: 3px solid #00ff41; margin-bottom: 20px; }
+        .prompt { color: #00ff41; font-weight: bold; }
+        #cmd-input { background: transparent; border: none; color: #fff; font-family: var(--mono-font); font-size: 16px; width: 70%; outline: none; }
+        
+        /* Стили досье */
+        .error-block { background-color: rgba(255, 0, 48, 0.1); border-top: solid 3px #B00; padding: 15px; text-align: center; margin: 20px 0; color: #ff4d4d; font-weight: bold; }
+        blockquote { border: solid 2px rgba(255, 255, 255, 0.1); background: #1a1a1a; padding: 20px; font-style: italic; }
+        blockquote::before { content: "ИНТЕРЦЕПТ_ДАННЫХ"; display: block; font-size: 0.7em; color: #E6283C; margin-bottom: 10px; font-family: var(--mono-font); font-style: normal; }
+        .glitch-text { color: #a200ff; text-shadow: 1px 1px #000; font-family: var(--head-font); font-size: 2em; text-align: center; display: block;}
+        h3 { border-bottom: 1px solid #444; padding-bottom: 5px; color: #00ff41;}
+    </style>
+</head>
+<body>
+
+<div id="container">
+    <div id="header">
+        <h1>SCP Foundation</h1>
+        <h2>SECURE, CONTAIN, PROTECT</h2>
+    </div>
+
+    <div id="console-area">
+        <span class="prompt">O5-USER@TERMINAL:~$</span>
+        <input type="text" id="cmd-input" placeholder="Введите команду (например: GET izzy.txt)" autocomplete="off" autofocus>
+    </div>
+
+    <div id="dossier-output"></div>
+</div>
+
+<script>
+    const input = document.getElementById('cmd-input');
+    const output = document.getElementById('dossier-output');
+
+    // Слушаем нажатие Enter
+    input.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            const command = input.value.trim();
+            input.value = ''; // Очищаем поле
+            processCommand(command);
+        }
+    });
+
+    async function processCommand(cmd) {
+        // Проверяем команду (пусть команда будет "GET имя_файла")
+        if (cmd.toUpperCase().startsWith('GET ')) {
+            const filename = cmd.substring(4).trim();
+            output.innerHTML = `<span style="color:yellow;">[SYSTEM] Поиск файла ${filename}...</span>`;
+            
+            try {
+                // Пытаемся загрузить файл
+                const response = await fetch(filename);
+                if (!response.ok) throw new Error('File not found');
+                const text = await response.text();
+                
+                // Рендерим текст в HTML
+                renderDossier(text);
+            } catch (error) {
+                output.innerHTML = `<div class="error-block">ОШИБКА 404: Файл [${filename}] не найден в базе данных.</div>`;
+            }
+        } else {
+            output.innerHTML = `<span style="color:red;">[ERROR] Неизвестная команда. Используйте 'GET имя_файла.txt'</span>`;
+        }
+    }
+
+    // Простой парсер нашего текстового файла
+    function renderDossier(rawText) {
+        let html = '';
+        const lines = rawText.split('\n');
+        
+        let inQuote = false;
+
+        for (let line of lines) {
+            line = line.trim();
+            if (!line) continue;
+
+            if (line.startsWith('[TITLE]')) {
+                html += `<span class="glitch-text">${line.replace('[TITLE]', '').trim()}</span>`;
+            } 
+            else if (line.startsWith('[WARNING]')) {
+                html += `<div class="error-block">⚠️ ${line.replace('[WARNING]', '').trim()}</div>`;
+            }
+            else if (line.startsWith('[H3]')) {
+                html += `<h3>${line.replace('[H3]', '').trim()}</h3>`;
+            }
+            else if (line.startsWith('[QUOTE]')) {
+                html += `<blockquote>`;
+                inQuote = true;
+            }
+            else if (line.startsWith('[TEXT]')) {
+                if (inQuote) { html += `</blockquote>`; inQuote = false; }
+            }
+            else {
+                // Обычный текст
+                html += `<p>${line}</p>`;
+            }
+        }
+        
+        // Закрываем цитату, если файл кончился
+        if (inQuote) html += `</blockquote>`;
+
+        output.innerHTML = html;
+    }
+</script>
+
+</body>
+</html>
