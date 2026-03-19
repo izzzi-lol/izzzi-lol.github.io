@@ -66,27 +66,37 @@
         }
     });
 
-    async function processCommand(cmd) {
-        // Проверяем команду (пусть команда будет "GET имя_файла")
+        async function processCommand(cmd) {
+        // Проверяем команду (теперь можно писать просто GET izzy)
         if (cmd.toUpperCase().startsWith('GET ')) {
-            const filename = cmd.substring(4).trim();
-            output.innerHTML = `<span style="color:yellow;">[SYSTEM] Поиск файла ${filename}...</span>`;
+            // Берем то, что после GET, переводим в нижний регистр и убираем пробелы
+            let target = cmd.substring(4).trim().toLowerCase();
+            
+            // Если пользователь случайно написал .txt, уберем его для единообразия
+            if (target.endsWith('.txt')) {
+                target = target.replace('.txt', '');
+            }
+
+            // Формируем скрытый путь к файлу
+            const filepath = `dossiers/${target}.txt`;
+            
+            output.innerHTML = `<span style="color:yellow;">[SYSTEM] Поиск объекта ${target.toUpperCase()} в базе данных...</span>`;
             
             try {
-                // Пытаемся загрузить файл
-                const response = await fetch(filename);
+                const response = await fetch(filepath);
                 if (!response.ok) throw new Error('File not found');
                 const text = await response.text();
                 
-                // Рендерим текст в HTML
+                // Рендерим текст в HTML (функция остается той же)
                 renderDossier(text);
             } catch (error) {
-                output.innerHTML = `<div class="error-block">ОШИБКА 404: Файл [${filename}] не найден в базе данных.</div>`;
+                output.innerHTML = `<div class="error-block">ОШИБКА 404: Данные по запросу [${target.toUpperCase()}] удалены или не существуют.</div>`;
             }
         } else {
-            output.innerHTML = `<span style="color:red;">[ERROR] Неизвестная команда. Используйте 'GET имя_файла.txt'</span>`;
+            output.innerHTML = `<span style="color:red;">[ERROR] Неизвестная команда. Используйте 'GET [имя_объекта]'</span>`;
         }
     }
+
 
     // Простой парсер нашего текстового файла
     function renderDossier(rawText) {
