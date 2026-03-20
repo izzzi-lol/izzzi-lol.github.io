@@ -247,18 +247,29 @@ async function renderStepByStep(content) {
         targetContainer.appendChild(el);
 
         // 4. Запуск анимации
+                // Запуск анимации слов
         const words = el.querySelectorAll('.word');
         if (words.length > 0) {
             for (let w of words) {
+                // 1. Показываем белый прямоугольник
                 w.classList.add('decrypting');
-                await new Promise(r => setTimeout(r, 15));
+                
+                // Ждем 30мс, пока висит прямоугольник
+                await new Promise(r => setTimeout(r, 30));
+                
+                // 2. Убираем прямоугольник и проявляем текст
+                w.classList.remove('decrypting');
                 w.classList.add('revealed');
-                await new Promise(r => setTimeout(r, 20));
+                
+                // Ждем 15мс перед следующим словом
+                await new Promise(r => setTimeout(r, 15));
+                
                 output.scrollTop = output.scrollHeight;
             }
         } else {
+            // Для блоков без слов (картинки, разделители)
             el.classList.add('visible');
-            await new Promise(r => setTimeout(r, 50));
+            await new Promise(r => setTimeout(r, 100));
         }
     }
 }

@@ -156,9 +156,6 @@ blockquote {
 .danger-diamond { border: 2px solid var(--danger-color); background: rgba(230, 40, 60, 0.1); padding: 20px; margin: 20px 0; text-align: center; color: #ff4d4d; font-weight: bold; }
 .footnote { clear: both; font-size: 0.85em; color: #888; border-top: 1px solid #333; margin-top: 40px; padding-top: 10px; }
 
-.word { opacity: 0; display: inline-block; }
-.word.revealed { opacity: 1; transition: opacity 0.3s; }
-
 /* 8. МОБИЛЬНАЯ АДАПТАЦИЯ */
 @media (max-width: 600px) {
     #console-area { height: 20px !important; font-size: 0.85em; }
@@ -169,3 +166,30 @@ blockquote {
 }
 
 .clearfix { clear: both; }
+
+/* --- АНИМАЦИЯ ПОЯВЛЕНИЯ СЛОВ --- */
+.word {
+    display: inline-block;
+    opacity: 0;
+    position: relative;
+    border-radius: 2px;
+    transition: background 0.2s ease-out;
+    margin-right: 0.2em; /* Небольшой отступ между словами */
+}
+
+/* Состояние "Белого прямоугольника" */
+.word.decrypting {
+    opacity: 1;
+    background: #fff; /* Цвет прямоугольника */
+    color: transparent !important; /* Прячем текст внутри */
+}
+
+/* Финальное состояние */
+.word.revealed {
+    opacity: 1;
+    background: transparent;
+    color: inherit;
+}
+
+/* Если хочешь, чтобы прямоугольник был цвета темы, используй это: */
+/* .word.decrypting { background: var(--theme-color); } */
