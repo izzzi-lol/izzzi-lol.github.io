@@ -6,7 +6,7 @@
     --danger-color: #E6283C;
     --terminal-green: #00ff41;
 
-    /* Цвета темы (Мираж) */
+    /* Цвета темы (Мираж по умолчанию) */
     --theme-color: #a200ff;
     --theme-quote-border: #a200ff;
     --theme-quote-bg: rgba(162, 0, 255, 0.05);
@@ -25,14 +25,13 @@ html, body {
 body {
     font-family: var(--page-font);
     color: #d1d1d1;
-    /* Убрали центрирование, чтобы не выталкивало контент за экран */
 }
 
-/* 2. КОНТЕЙНЕР С УЧЕТОМ МОБИЛЬНЫХ ГРАНИЦ */
+/* 2. КОНТЕЙНЕР */
 #container {
     width: 100vw;
     height: 100vh;
-    height: 100dvh; /* Динамическая высота под клавиатуру */
+    height: 100dvh; 
     background: #111;
     display: flex;
     flex-direction: column;
@@ -40,11 +39,10 @@ body {
     position: relative;
 }
 
-/* 3. КОНСОЛЬ (ФИКСИМ "ШТОРКУ" И НОТЧ) */
+/* 3. КОНСОЛЬ */
 #console-area {
     font-family: var(--mono-font);
     background: #000;
-    /* Учитываем вырез камеры на iPhone/Android */
     padding: calc(15px + env(safe-area-inset-top)) 20px 15px 20px; 
     border-bottom: 1px solid #333;
     border-left: 4px solid var(--terminal-green);
@@ -67,13 +65,13 @@ body {
     scroll-behavior: smooth;
 }
 
-/* 5. ПРАВИЛА ОБТЕКАНИЯ (ЧТОБЫ ВСЁ БЫЛО РЯДОМ С ФОТО) */
+/* 5. КОНТЕНТ И ОБТЕКАНИЕ */
 #dossier-output p {
     margin-bottom: 1em;
-    /* НЕ ставим flow-root, чтобы текст мог огибать фото */
+    display: block; /* Разрешаем обтекание */
 }
 
-/* Цитаты: используем flow-root, чтобы фиолетовый фон не залезал ПОД фото */
+/* Цитаты */
 blockquote {
     border-left: 4px solid var(--theme-quote-border);
     background: var(--theme-quote-bg);
@@ -81,18 +79,19 @@ blockquote {
     margin: 20px 0;
     font-style: italic;
     color: #bbb;
-    display: flow-root; 
+    display: block; /* Убрали flow-root, теперь цитата поднимется к фото */
 }
 
-/* ТАБЛИЦЫ */
+/* ТАБЛИЦЫ (Твой дизайн сохранен!) */
 .table-wrapper { 
     margin: 25px 0; 
-    overflow: hidden; /* Скругляем углы, если нужно */
+    overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(0, 0, 0, 0.3);
     border-radius: 4px;
     opacity: 0; 
     transition: opacity 0.5s; 
+    display: block; /* Разрешаем таблице обтекать картинку */
 }
 
 .table-wrapper.visible { opacity: 1; }
@@ -100,7 +99,7 @@ blockquote {
 .table6 { 
     width: 100%; 
     border-collapse: collapse; 
-    font-family: var(--mono-font); /* Моноширинный шрифт для данных */
+    font-family: var(--mono-font); 
 }
 
 .table6 td { 
@@ -111,9 +110,8 @@ blockquote {
     vertical-align: middle;
 }
 
-/* Первая строка (Заголовки) */
 .table6 tr:first-child { 
-    background: var(--theme-table-bg, rgba(146, 0, 255, 0.2)); 
+    background: var(--theme-table-bg); 
     color: #fff; 
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -126,41 +124,28 @@ blockquote {
     font-weight: 700;
 }
 
-/* Эффект чередования строк (Зебра) */
-.table6 tr:nth-child(even) {
-    background: rgba(255, 255, 255, 0.02);
-}
+.table6 tr:nth-child(even) { background: rgba(255, 255, 255, 0.02); }
+.table6 tr:hover { background: rgba(255, 255, 255, 0.05); transition: background 0.2s; }
 
-/* Подсветка при наведении */
-.table6 tr:hover {
-    background: rgba(255, 255, 255, 0.05);
-    transition: background 0.2s;
-}
-
-/* Выделение левой колонки (ключи/названия) */
 .table6 td:first-child {
     border-right: 1px solid rgba(255, 255, 255, 0.05);
     font-weight: 600;
-    color: var(--theme-color); /* Используем цвет темы для ключей */
-    width: 30%; /* Ограничиваем ширину левой колонки */
+    color: var(--theme-color); 
+    width: 30%; 
 }
-
-.table-wrapper.visible { opacity: 1; }
-
-.table6 { width: 100%; border-collapse: collapse; }
-.table6 td { border: 1px solid #333; padding: 12px; font-size: 0.9em; }
-.table6 tr:first-child { background: var(--theme-table-bg); color: #fff; font-weight: bold; }
 
 /* 6. ИЗОБРАЖЕНИЯ */
 .scp-image-container {
     background: #050505;
-    padding: 5px;
+    padding: 4px;
     border: 1px solid #444;
     margin-bottom: 20px;
+    z-index: 2;
+    position: relative;
 }
 
-.right-mode { float: right; margin-left: 20px; width: 300px; }
-.left-mode { float: left; margin-right: 20px; width: 300px; }
+.right-mode { float: right; margin: 0 0 15px 20px; width: 300px; }
+.left-mode { float: left; margin: 0 20px 15px 0; width: 300px; }
 .full-mode { float: none; margin: 20px auto; width: 100%; max-width: 800px; clear: both; }
 
 .scp-image-container img { width: 100%; height: auto; display: block; }
@@ -176,8 +161,9 @@ blockquote {
 
 /* 8. МОБИЛЬНАЯ АДАПТАЦИЯ */
 @media (max-width: 600px) {
+    #console-area { height: 20px !important; font-size: 0.85em; }
     #dossier-output { padding: 15px; }
-    /* На мобилках выключаем обтекание, так как места мало */
+    /* На мобилках выключаем обтекание, картинка встает по центру */
     .scp-image-container { float: none !important; margin: 10px auto !important; width: 100% !important; }
     .glitch-title { font-size: 1.5em; }
 }
