@@ -2,10 +2,10 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>TERMINAL O5-COMMAND</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TERMINAL O5-MOBILE</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;600;700&family=Inter:wght@400;700&display=swap">
     <style>
-        /* Базовые переменные из Foxtrot */
         :root {
             --accent: 28, 37, 56;
             --head-font: 'IBM Plex Sans', sans-serif;
@@ -14,49 +14,139 @@
             --danger-color: #E6283C;
         }
 
-        body { font-family: var(--page-font); background-color: #0a0a0a; color: #d1d1d1; margin: 0; padding: 20px; }
-        #container { max-width: 900px; margin: 0 auto; border: 1px solid #333; background: #111; padding: 40px; box-shadow: 0 0 30px rgba(0,0,0,0.7); min-height: 85vh; }
+        /* Общие настройки для всех устройств */
+        body { 
+            font-family: var(--page-font); 
+            background-color: #0a0a0a; 
+            color: #d1d1d1; 
+            margin: 0; 
+            padding: 10px; /* Уменьшили для мобилок */
+            box-sizing: border-box;
+        }
+
+        #container { 
+            max-width: 900px; 
+            margin: 0 auto; 
+            border: 1px solid #333; 
+            background: #111; 
+            padding: 20px; /* Уменьшили базовый паддинг */
+            box-shadow: 0 0 30px rgba(0,0,0,0.7); 
+            min-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Консоль: на мобилках сделаем её более заметной */
+        #console-area { 
+            font-family: var(--mono-font); 
+            background: #000; 
+            padding: 12px; 
+            border-left: 3px solid #00ff41; 
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap; /* Чтобы промпт и инпут могли переноситься */
+        }
+
+        .prompt { color: #00ff41; font-weight: bold; margin-right: 10px; font-size: 0.9em; }
         
-        /* Терминал */
-        #console-area { font-family: var(--mono-font); background: #000; padding: 15px; border-left: 3px solid #00ff41; margin-bottom: 25px; }
-        .prompt { color: #00ff41; font-weight: bold; }
-        #cmd-input { background: transparent; border: none; color: #fff; font-family: var(--mono-font); font-size: 16px; width: 70%; outline: none; }
+        #cmd-input { 
+            background: transparent; 
+            border: none; 
+            color: #fff; 
+            font-family: var(--mono-font); 
+            font-size: 16px; /* Защита от автозума на iOS */
+            flex: 1; 
+            min-width: 150px;
+            outline: none; 
+        }
 
-        /* Элементы Wikidot-стиля */
-        .glitch-title { color: #a200ff; font-family: var(--head-font); font-size: 2.2em; text-align: center; display: block; margin: 20px 0; text-transform: uppercase; letter-spacing: 4px; }
+        /* Стили заголовка */
+        .glitch-title { 
+            color: #a200ff; 
+            font-family: var(--head-font); 
+            font-size: 1.8em; /* Уменьшили для мобилок */
+            text-align: center; 
+            display: block; 
+            margin: 15px 0; 
+            text-transform: uppercase; 
+            letter-spacing: 2px;
+            word-wrap: break-word; /* Чтобы длинные слова не ломали верстку */
+        }
         
-        /* Danger Diamond (Красный блок предупреждения) */
-        .danger-diamond { border: 2px solid var(--danger-color); background: rgba(230, 40, 60, 0.1); padding: 20px; margin: 20px 0; position: relative; text-align: center; font-weight: bold; color: #ff4d4d; }
-        .danger-diamond::before { content: "⚠️ КРИТИЧЕСКАЯ УГРОЗА"; display: block; font-size: 0.8em; margin-bottom: 10px; opacity: 0.7; }
-
-        /* Таблица Style 6 */
-        .table6 { width: 100%; border-collapse: collapse; margin: 20px 0; border: 2px solid #333; }
-        .table6 th { background: rgba(162, 0, 255, 0.2); border: 2px solid #a200ff; padding: 12px; color: #fff; text-align: left; }
-        .table6 td { border: 1px solid #333; padding: 10px; }
-
-        /* Цитаты и сноски */
-        blockquote { border-left: 4px solid #444; background: #1a1a1a; padding: 15px 25px; margin: 20px 0; font-style: italic; color: #bbb; }
         .footnote { font-size: 0.85em; color: #888; border-top: 1px solid #333; margin-top: 40px; padding-top: 10px; }
+
+        /* Адаптивные таблицы */
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto; /* Позволяет свайпать таблицу вправо-влево */
+            margin: 20px 0;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .table6 { width: 100%; border-collapse: collapse; min-width: 400px; }
+        .table6 th { background: rgba(162, 0, 255, 0.2); border: 2px solid #a200ff; padding: 10px; font-size: 0.9em; }
+        .table6 td { border: 1px solid #333; padding: 8px; font-size: 0.85em; }
+
+        /* Изображения */
+        .scp-image-container {
+            border: 1px solid #333;
+            background: #050505;
+            padding: 5px;
+            margin-bottom: 20px;
+            width: 100%; /* На мобилках во всю ширину */
+            box-sizing: border-box;
+        }
+
+        /* Десктопные правки для картинок */
+        @media (min-width: 600px) {
+            #container { padding: 40px; }
+            .glitch-title { font-size: 2.2em; letter-spacing: 4px; }
+            .scp-image-container { float: right; width: 300px; margin-left: 20px; }
+        }
+
+        .scp-image-container img { width: 100%; height: auto; display: block; }
+        .scp-image-caption { font-family: var(--mono-font); font-size: 0.7em; color: #888; text-align: center; padding: 5px; }
+
+        /* Предупреждения */
+        .danger-diamond { 
+            border: 2px solid var(--danger-color); 
+            background: rgba(230, 40, 60, 0.1); 
+            padding: 15px; 
+            margin: 15px 0; 
+            text-align: center; 
+            font-size: 0.9em;
+            word-wrap: break-word;
+        }
         
-        /* Форматирование внутри текста */
-        b, strong { color: #fff; }
-        i, em { color: #88f; }
+        .danger-diamond::before { content: "⚠️ КРИТИЧЕСКАЯ УГРОЗА"; display: block; font-size: 0.8em; margin-bottom: 10px; opacity: 0.7; }
+        
+        blockquote { 
+            border-left: 3px solid #444; 
+            background: #1a1a1a; 
+            padding: 15px; 
+            margin: 15px 0; 
+            font-size: 0.9em; 
+        }
+
+        .clearfix { clear: both; }
     </style>
 </head>
 <body>
 
 <div id="container">
     <div id="console-area">
-        <span class="prompt">O5-DATABASE@ROOT:~$</span>
-        <input type="text" id="cmd-input" placeholder="Введите команду (напр. GET mirage)" autocomplete="off" autofocus>
+        <span class="prompt">O5@TERMINAL:~$</span>
+        <input type="text" id="cmd-input" placeholder="Введите GET [имя]" autocomplete="off" autofocus>
     </div>
 
     <div id="dossier-output">
-        <p style="text-align:center; color:#555;">Ожидание ввода команды доступа...</p>
+        <p style="text-align:center; color:#444; font-size: 0.8em;">СИСТЕМА ГОТОВА К РАБОТЕ. ВВЕДИТЕ КОМАНДУ ДОСТУПА.</p>
     </div>
 </div>
 
 <script>
+    // Весь JS остается таким же, как в прошлый раз, но добавим обертку для таблиц
     const input = document.getElementById('cmd-input');
     const output = document.getElementById('dossier-output');
 
@@ -67,19 +157,21 @@
             if (cmd.toUpperCase().startsWith('GET ')) {
                 const name = cmd.substring(4).toLowerCase();
                 loadDossier(name);
+                // На мобилках убираем фокус с инпута после ввода, чтобы скрылась клавиатура
+                input.blur(); 
             }
         }
     });
 
     async function loadDossier(name) {
-        output.innerHTML = `<p style="color:cyan;">[LOADING] Запрос к защищенному архиву: ${name.toUpperCase()}...</p>`;
+        output.innerHTML = `<p style="color:cyan; font-family: monospace;">[ЗАГРУЗКА...]</p>`;
         try {
             const response = await fetch(`dossiers/${name}.txt`);
             if (!response.ok) throw new Error();
             const text = await response.text();
             output.innerHTML = parseWikidot(text);
         } catch {
-            output.innerHTML = `<div class="danger-diamond">ОШИБКА ДОСТУПА: Объект "${name}" не найден или удален Советом О5.</div>`;
+            output.innerHTML = `<div class="danger-diamond">ОШИБКА: Файл ${name.toUpperCase()} не найден.</div>`;
         }
     }
 
@@ -92,36 +184,39 @@
             line = line.trim();
             if (!line) return;
 
-            // 1. Обработка блочных тегов
-            if (line.startsWith('[TITLE]')) {
+            if (line.startsWith('[IMAGE]')) {
+                let parts = line.replace('[IMAGE]', '').split('||');
+                html += `
+                <div class="scp-image-container">
+                    <img src="${parts[0].trim()}" alt="DATA">
+                    <div class="scp-image-caption">${parts[1] ? parts[1].trim() : ""}</div>
+                </div>`;
+            } else if (line.startsWith('[TITLE]')) {
                 html += `<span class="glitch-title">${line.replace('[TITLE]', '')}</span>`;
             } else if (line.startsWith('[DANGER]')) {
                 html += `<div class="danger-diamond">${line.replace('[DANGER]', '')}</div>`;
+            } else if (line.startsWith('[TABLE6]')) {
+                html += `<div class="table-wrapper"><table class="table6">`;
+                isTable = true;
             } else if (line.startsWith('[QUOTE]')) {
                 html += `<blockquote>`;
             } else if (line.startsWith('[FOOTNOTE]')) {
                 html += `<div class="footnote">${line.replace('[FOOTNOTE]', '')}</div>`;
-            } else if (line.startsWith('[TABLE6]')) {
-                html += `<table class="table6">`;
-                isTable = true;
             } else {
-                // 2. Обработка строчных элементов (Bold, Italic)
                 let formattedLine = line
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Жирный **текст**
-                    .replace(/\/\/(.*?)\/\//g, '<em>$1</em>')         // Курсив //текст//
-                    .replace(/__(.*?)__/g, '<u>$1</u>');             // Подчеркивание __текст__
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\/\/(.*?)\/\//g, '<em>$1</em>');
 
-                // 3. Обработка строк таблицы
                 if (isTable && formattedLine.includes('||')) {
                     let cells = formattedLine.split('||');
                     html += `<tr>${cells.map(c => `<td>${c.trim()}</td>`).join('')}</tr>`;
                 } else {
-                    if (isTable) { html += `</table>`; isTable = false; }
+                    if (isTable) { html += `</table></div>`; isTable = false; }
                     html += `<p>${formattedLine}</p>`;
                 }
             }
         });
-        return html;
+        return html + '<div class="clearfix"></div>';
     }
 </script>
 
