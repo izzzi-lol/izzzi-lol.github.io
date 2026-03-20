@@ -30,13 +30,33 @@ body {
 /* 2. КОНТЕЙНЕР */
 #container {
     width: 100vw;
-    height: 100vh;
-    height: 100dvh; 
-    background: #111;
+    height: 100dvh;
+    background: #111; /* Фон самого терминала */
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
     position: relative;
+    z-index: 1; /* Создаем контекст наложения */
+    overflow: hidden;
+}
+
+/* ЛОГОТИП НА ФОНЕ */
+#container::before {
+    content: '';
+    position: absolute; /* Абсолютное позиционирование внутри контейнера */
+    top: 0; left: 0; right: 0; bottom: 0;
+
+    /* Путь: ../ если CSS в папке css. Если CSS в корне, убери ../ */
+    background-image: url("../images/scp_logo.png");
+
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 50vh; /* Размер логотипа (50% от высоты экрана) */
+
+    opacity: 0.05; /* Делаем логотип очень бледным, чтобы текст читался */
+    z-index: -1;   /* Теперь он будет МЕЖДУ черным фоном и текстом */
+    pointer-events: none; /* Чтобы по логотипу нельзя было случайно кликнуть */
+    filter: grayscale(100%) brightness(50%);
 }
 
 /* 3. КОНСОЛЬ */
@@ -156,6 +176,33 @@ blockquote {
 .danger-diamond { border: 2px solid var(--danger-color); background: rgba(230, 40, 60, 0.1); padding: 20px; margin: 20px 0; text-align: center; color: #ff4d4d; font-weight: bold; }
 .footnote { clear: both; font-size: 0.85em; color: #888; border-top: 1px solid #333; margin-top: 40px; padding-top: 10px; }
 
+.doc-end {
+    clear: both;
+    font-size: 1.5em;
+    text-align: center;
+    color: #b60000;
+    border-top: 1px solid #333;
+    margin-top: 40px;
+    padding-top: 10px;
+}
+.doc-line {
+    clear: both;
+    font-size: 1.5em;
+    text-align: center;
+    color: #b60000;
+    border-top: 1px solid #333;
+    margin-top: 40px;
+
+    /* Убираем padding сверху и добавляем высоту строки */
+    padding-top: 0;
+    line-height: 0.1em;
+}
+
+.doc-line span {
+    /* Чтобы скрыть линию за текстом, нужен фон */
+    background: #fff;
+    padding: 0 10px;
+}
 /* 8. МОБИЛЬНАЯ АДАПТАЦИЯ */
 @media (max-width: 600px) {
     #console-area { height: 20px !important; font-size: 0.85em; }
@@ -163,6 +210,12 @@ blockquote {
     /* На мобилках выключаем обтекание, картинка встает по центру */
     .scp-image-container { float: none !important; margin: 10px auto !important; width: 100% !important; }
     .glitch-title { font-size: 1.5em; }
+}
+
+.center {
+    text-align: center;
+    display: block; /* Чтобы p вел себя как блок и центрировал текст внутри */
+    width: 100%;
 }
 
 .clearfix { clear: both; }
@@ -173,7 +226,7 @@ blockquote {
     opacity: 0;
     position: relative;
     border-radius: 2px;
-    transition: background 0.2s ease-out;
+    transition: background 0.5s ease-out;
     margin-right: 0.2em; /* Небольшой отступ между словами */
 }
 

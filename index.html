@@ -20,17 +20,20 @@
 <div id="container">
     <div id="console-area">
         <span class="prompt">O5@SCIPNET:~$</span>
-        <input type="text" id="cmd-input" placeholder="Введите GET [имя_объекта]" autocomplete="off" autofocus>
+        <div style="position: relative; flex: 1; display: flex; align-items: center;">
+            <span id="cmd-suggestion" style="position: absolute; left: 0; color: #555; pointer-events: none; font-family: var(--mono-font); font-size: 16px;"></span>
+            <input type="text" id="cmd-input" autocomplete="off" spellcheck="false" autofocus style="position: relative; z-index: 2; background: transparent; width: 100%; border: none; color: #fff; font-family: var(--mono-font); font-size: 16px; outline: none;">
+        </div>
     </div>
 
     <div id="dossier-output">
-        <div style="text-align:center; margin-top: 20vh; color: #333;">
-            <p>[ СИСТЕМА ОЖИДАНИЯ ВВОДА ]</p>
-            <p style="font-size: 0.8em;">Используйте команду GET для доступа к архивам.</p>
+        <div style="text-align:center; color: #333;">
         </div>
-
     </div>
 </div>
+
+<script src="js/terminal/cmd_get.js"></script>
+<script src="js/terminal/commands.js"></script>
 <script src="js/terminal/main.js"></script>
 </body>
 </html>
