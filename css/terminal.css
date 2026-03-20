@@ -27,15 +27,15 @@ html, body {
 body {
     font-family: var(--page-font);
     color: #d1d1d1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+   /* justify-content: center;
+    align-items: center; */
 }
 
 /* ГЛАВНАЯ РАМКА (ТЕРМИНАЛ) */
 #container {
     width: 100vw;
-    height: 100vh;
+    height: 100vh; /* Фолбек для старых браузеров */
+    height: 100dvh; /* КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Динамическая высота под мобилки */
     background: #111;
     border: 1px solid #333;
     display: flex;
@@ -43,6 +43,7 @@ body {
     box-sizing: border-box;
     position: relative;
 }
+
 
 /* ФИКСИРОВАННАЯ КОМАНДНАЯ СТРОКА */
 #console-area {
