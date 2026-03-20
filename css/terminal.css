@@ -84,15 +84,67 @@ blockquote {
     display: flow-root; 
 }
 
-/* Таблицы: разрешаем стоять рядом с фото */
-.table-wrapper {
-    margin: 20px 0;
-    overflow-x: auto;
-    border: 1px solid #333;
-    opacity: 0;
-    transition: opacity 0.5s;
-    /* УБРАЛИ clear: both */
+/* ТАБЛИЦЫ */
+.table-wrapper { 
+    margin: 25px 0; 
+    overflow: hidden; /* Скругляем углы, если нужно */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    opacity: 0; 
+    transition: opacity 0.5s; 
 }
+
+.table-wrapper.visible { opacity: 1; }
+
+.table6 { 
+    width: 100%; 
+    border-collapse: collapse; 
+    font-family: var(--mono-font); /* Моноширинный шрифт для данных */
+}
+
+.table6 td { 
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05); 
+    padding: 14px 18px; 
+    font-size: 0.85em; 
+    color: #ccc;
+    vertical-align: middle;
+}
+
+/* Первая строка (Заголовки) */
+.table6 tr:first-child { 
+    background: var(--theme-table-bg, rgba(146, 0, 255, 0.2)); 
+    color: #fff; 
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.8em;
+}
+
+.table6 tr:first-child td {
+    border-bottom: 2px solid var(--theme-color);
+    color: #fff;
+    font-weight: 700;
+}
+
+/* Эффект чередования строк (Зебра) */
+.table6 tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* Подсветка при наведении */
+.table6 tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transition: background 0.2s;
+}
+
+/* Выделение левой колонки (ключи/названия) */
+.table6 td:first-child {
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    font-weight: 600;
+    color: var(--theme-color); /* Используем цвет темы для ключей */
+    width: 30%; /* Ограничиваем ширину левой колонки */
+}
+
 .table-wrapper.visible { opacity: 1; }
 
 .table6 { width: 100%; border-collapse: collapse; }
