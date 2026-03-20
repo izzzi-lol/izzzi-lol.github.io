@@ -1,68 +1,95 @@
 const CmdGet = {
-    async execute(args, terminal) {
-        if (args.length === 0) {
-            terminal.printError("ОШИБКА: Укажите ключевое слово для поиска. Пример: get soul");
-            return;
-        }
+        recentMatches: [],
 
-        const query = args.join(' ').toLowerCase();
-        terminal.printSystem(`ИНИЦИАЛИЗАЦИЯ ПОИСКА ПО ЗАПРОСУ: "${query}"...`);
+        async execute(args, terminal) {
+            if (args.length === 0) {
+                terminal.printError("ОШИБКА: Укажите ID или имя. Пример: get 01005423");
+                return;
+            }
 
-        try {
-            // 1. Получаем список всех папок с досье
-            const listResponse = await fetch('dossiers/list.json');
-            if (!listResponse.ok) throw new Error('Список директорий не найден');
-            const folderIds = await listResponse.json();
+            // query — это СТРОКА, с ней можно работать
+            const query = args.join(' ').toLowerCase();
 
-            let foundFolderId = null;
-            let foundContent = null;
+            if (query === 'recent') {
+                // Передаем пустую строку, чтобы поиск в превью не упал
+                this.displayRecent(terminal, "");
+                return;
+            }
 
-            // 2. Перебираем папки и ищем внутри файлов dossier.txt
-            terminal.printSystem("СКАНИРОВАНИЕ ЛОКАЛЬНЫХ БАЗ ДАННЫХ...");
+            terminal.printSystem(`ИНИЦИАЛИЗАЦИЯ ПОИСКА: "${query}"...`);
 
-            for (const id of folderIds) {
-                try {
+            try {
+                const listResponse = await fetch('dossiers/list.json');
+                const folderIds = await listResponse.json();
+                let matches = [];
+
+                for (const id of folderIds) {
                     const docResponse = await fetch(`dossiers/${id}/dossier.txt`);
                     if (!docResponse.ok) continue;
 
                     const content = await docResponse.text();
+                    // Извлекаем заголовок из первой строки (после [TITLE] или [CODES])
+                    const firstLine = content.split('\n')[0] || "";
+                    const title = firstLine.replace(/\[.*?\]/g, '').split(',')[0].trim() || "БЕЗ ИМЕНИ";
 
-                    // Поиск: проверяем, есть ли запрос в тексте (без учета регистра)
-                    if (content.toLowerCase().includes(query)) {
-                        foundFolderId = id;
-                        foundContent = content;
-                        break; // Останавливаем поиск при первом совпадении
+                    if (id === query || content.toLowerCase().includes(query)) {
+                        matches.push({ id, title, content });
                     }
-                } catch (e) {
-                    console.warn(`Ошибка чтения досье ${id}:`, e);
                 }
+
+                if (matches.length === 0) {
+                    terminal.printError(`СОВПАДЕНИЙ НЕ НАЙДЕНО.`);
+                }
+                else if (matches.length === 1 && query !== 'recent') {
+                    terminal.clear();
+                    const outputContainer = document.getElementById('dossier-output');
+                    await this.renderStepByStep(matches[0].content, outputContainer, matches[0].id);
+                }
+                else {
+                    this.recentMatches = matches;
+                    // ПЕРЕДАЕМ query, чтобы функция знала, что подсвечивать
+                    this.displayRecent(terminal, query);
+                }
+
+            } catch (error) {
+                terminal.printError(`КРИТИЧЕСКАЯ ОШИБКА: ${error.message}`);
+            }
+        },
+
+        displayRecent(terminal, query) {
+            if (this.recentMatches.length === 0) {
+                terminal.printSystem("СПИСОК ПУСТ.");
+                return;
             }
 
-            if (foundFolderId) {
-                terminal.printSystem(`СОВПАДЕНИЕ НАЙДЕНО. ИЗВЛЕЧЕНИЕ ДОСЬЕ [ID: ${foundFolderId}]...`);
-                await new Promise(r => setTimeout(r, 800)); // Имитация загрузки
+            terminal.printSystem("\n--- РЕЗУЛЬТАТЫ ПОИСКА ---");
 
-                // Получаем контейнер вывода и запускаем твой парсер
-                const outputContainer = document.getElementById('dossier-output');
+            this.recentMatches.forEach(m => {
+                // Очищаем текст от тегов для красивого превью
+                const cleanText = m.content.replace(/\[.*?\]/g, ' ').replace(/\s+/g, ' ').trim();
+                const words = cleanText.split(' ');
 
-                const startDoc = document.createElement("div");
-                startDoc.classList.add("doc-line");
+                let preview = "";
 
-                const textSpan = document.createElement("span");
-                textSpan.textContent = "[НАЧАЛО ДОКУМЕНТА]";
+                // Проверяем, есть ли что искать в тексте (если это не просто get recent)
+                if (query) {
+                    const foundIndex = words.findIndex(w => w.toLowerCase().includes(query));
 
-                startDoc.appendChild(textSpan);
-                outputContainer.appendChild(startDoc);
+                    if (foundIndex !== -1) {
+                        const start = Math.max(0, foundIndex - 3);
+                        const end = Math.min(words.length, foundIndex + 4);
+                        // .slice() вместо [:]
+                        const fragment = words.slice(start, end).join(' ');
+                        preview = `| ...${fragment}...`;
+                    }
+                }
 
-                await this.renderStepByStep(foundContent, outputContainer, foundFolderId);
-            } else {
-                terminal.printError(`ОШИБКА: Запись по запросу "${query}" не найдена.`);
-            }
+                terminal.printSystem(`[ID: ${m.id}] | ${m.title} - Контекст: "${preview}"`);
+            });
 
-        } catch (error) {
-            terminal.printError(`КРИТИЧЕСКАЯ ОШИБКА БАЗЫ ДАННЫХ: ${error.message}`);
-        }
-    },
+            terminal.printSystem("---------------------------\n");
+            terminal.printSystem("Для доступа к нужной записи введите команду GET [ID]");
+        },
 
     // Твой доведенный до идеала парсер
     async renderStepByStep(content, output, folderId) {

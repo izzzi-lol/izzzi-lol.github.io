@@ -1,5 +1,5 @@
-[COLORCODES] Mainpage=#4682B4; Quotes=#A8A8A8; Tables=#A0A000
 [TITLE] Соул Реймонд
+[COLORCODES] Mainpage=#4682B4; Quotes=#A8A8A8; Tables=#A0A000
 
 [IMAGE]soul_profile.jpg || Визуальная интерпретация сотрудника || right
 
