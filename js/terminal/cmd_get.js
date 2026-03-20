@@ -33,16 +33,21 @@ const CmdGet = {
                     const title = firstLine.replace(/\[.*?\]/g, '').split(',')[0].trim() || "БЕЗ ИМЕНИ";
 
                     if (id === query || content.toLowerCase().includes(query)) {
-                        matches.push({ id, title, content });
+                        matches.push({id, title, content});
                     }
                 }
 
                 if (matches.length === 0) {
                     terminal.printError(`СОВПАДЕНИЙ НЕ НАЙДЕНО.`);
-                }
-                else if (matches.length === 1 && query !== 'recent') {
-                    terminal.clear();
+                } else if (matches.length === 1 && query !== 'recent') {
                     const outputContainer = document.getElementById('dossier-output');
+
+                    terminal.printSystem(`НАЙДЕНА ЗАПИСЬ ПО ID: ${matches[0].id}`);
+
+                    await new Promise(r => setTimeout(r, 20));
+
+                    terminal.printSystem(`Инициализация . . .`);
+
                     await this.renderStepByStep(matches[0].content, outputContainer, matches[0].id);
                 }
                 else {
