@@ -48,6 +48,17 @@ const CmdGet = {
 
                     terminal.printSystem(`Инициализация . . .`);
 
+                    
+
+                   const startLine = document.createElement("div");
+                   startLine.classList.add("doc-line");
+
+                   const textSpan = document.createElement("span");
+                   textSpan.textContent = "[НАЧАЛО ДОКУМЕНТА]";
+
+                   startLine.appendChild(textSpan);
+                   output.appendChild(startLine);
+                        
                     await this.renderStepByStep(matches[0].content, outputContainer, matches[0].id);
                 }
                 else {
