@@ -1,119 +1,148 @@
+// НАСТРОЙКИ РЕПОЗИТОРИЯ (Впиши свои данные!)
+const GITHUB_USER = "izzzi-lol"; // Например, izzzi-lol
+const GITHUB_REPO = "izzzi-lol.github.io"; // Например, scp-terminal
+const DOSSIERS_ROOT = "dossiers"; 
+
 const CmdGet = {
-        recentMatches: [],
+    recentMatches: [],
 
-        async execute(args, terminal) {
-            if (args.length === 0) {
-                terminal.printError("ОШИБКА: Укажите ID или имя. Пример: get 01005423");
+    // --- НОВАЯ ФУНКЦИЯ ДЛЯ РАБОТЫ С GITHUB API ---
+    async fetchAvailableFolders(terminal) {
+        const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${DOSSIERS_ROOT}`;
+        try {
+            const response = await fetch(url);
+            if (!response.ok) return [];
+            const data = await response.json();
+            
+            // Нас интересуют только папки (директории), их имена — это ID досье
+            return data
+                .filter(item => item.type === 'dir')
+                .map(item => item.name);
+        } catch (e) {
+            terminal.printError("Ошибка баз данных:", e);
+            return [];
+        }
+    },
+
+    async execute(args, terminal) {
+        if (args.length === 0) {
+            terminal.printError("ОШИБКА: Укажите ID или имя. Пример: get 01005423");
+            return;
+        }
+
+        const query = args.join(' ').toLowerCase();
+
+        if (query === 'recent') {
+            this.displayRecent(terminal, "");
+            return;
+        }
+
+        terminal.printSystem(`ИНИЦИАЛИЗАЦИЯ ПОИСКА: "${query.toUpperCase()}"...`);
+
+        try {
+            // 1. ПОЛУЧАЕМ СПИСОК ПАПОК ЧЕРЕЗ API (ВМЕСТО list.json)
+            const folderIds = await this.fetchAvailableFolders(terminal);
+            
+            if (folderIds.length === 0) {
+                terminal.printError("КРИТИЧЕСКАЯ ОШИБКА: База данных недоступна или пуста.");
                 return;
             }
 
-            // query — это СТРОКА, с ней можно работать
-            const query = args.join(' ').toLowerCase();
+            let matches = [];
 
-            if (query === 'recent') {
-                // Передаем пустую строку, чтобы поиск в превью не упал
-                this.displayRecent(terminal, "");
-                return;
-            }
+            // 2. ПРОВЕРЯЕМ КАЖДЫЙ dossier.txt
+            for (const id of folderIds) {
+                const docResponse = await fetch(`${DOSSIERS_ROOT}/${id}/dossier.txt`);
+                if (!docResponse.ok) continue;
 
-            terminal.printSystem(`ИНИЦИАЛИЗАЦИЯ ПОИСКА: "${query}"...`);
-
-            try {
-                const listResponse = await fetch('dossiers/list.json');
-                const folderIds = await listResponse.json();
-                let matches = [];
-
-                for (const id of folderIds) {
-                    const docResponse = await fetch(`dossiers/${id}/dossier.txt`);
-                    if (!docResponse.ok) continue;
-
-                    const content = await docResponse.text();
-                    // Извлекаем заголовок из первой строки (после [TITLE] или [CODES])
-                    const firstLine = content.split('\n')[0] || "";
-                    const title = firstLine.replace(/\[.*?\]/g, '').split(',')[0].trim() || "БЕЗ ИМЕНИ";
-
-                    if (id === query || content.toLowerCase().includes(query)) {
-                        matches.push({id, title, content});
-                    }
+                const content = await docResponse.text();
+                
+                // Ищем тег [TITLE], чтобы вытащить имя для превью
+                let title = "НЕИЗВЕСТНЫЙ СУБЪЕКТ";
+                const titleMatch = content.match(/\[TITLE\](.*)/);
+                if (titleMatch) {
+                    title = titleMatch[1].trim();
                 }
 
-                if (matches.length === 0) {
-                    terminal.printError(`СОВПАДЕНИЙ НЕ НАЙДЕНО.`);
-                } else if (matches.length === 1 && query !== 'recent') {
-                    const outputContainer = document.getElementById('dossier-output');
+                // Проверяем: совпадает ли ID папки или есть ли слово в тексте
+                if (id.toLowerCase() === query || content.toLowerCase().includes(query)) {
+                    matches.push({id, title, content});
+                }
+            }
 
-                    terminal.printSystem(`НАЙДЕНА ЗАПИСЬ ПО ID: ${matches[0].id}`);
+            // 3. ОБРАБОТКА РЕЗУЛЬТАТОВ
+            if (matches.length === 0) {
+                terminal.printError(`СОВПАДЕНИЙ НЕ НАЙДЕНО.`);
+            } 
+            else if (matches.length === 1 && query !== 'recent') {
+                const outputContainer = TerminalAPI.getOutputNode(); // Используем API терминала
 
-                    await new Promise(r => setTimeout(r, 20));
+                terminal.printSystem(`НАЙДЕНА ЗАПИСЬ ПО ID: ${matches[0].id}`);
+                await new Promise(r => setTimeout(r, 20));
+                terminal.printSystem(`Инициализация . . .`);
 
-                    terminal.printSystem(`Инициализация . . .`);
-
+                const startLine = document.createElement("div");
+                startLine.classList.add("doc-line");
+                const textSpan = document.createElement("span");
+                textSpan.textContent = "[НАЧАЛО ДОКУМЕНТА]";
+                startLine.appendChild(textSpan);
+                outputContainer.appendChild(startLine);
                     
-
-                   const startLine = document.createElement("div");
-                   startLine.classList.add("doc-line");
-
-                   const textSpan = document.createElement("span");
-                   textSpan.textContent = "[НАЧАЛО ДОКУМЕНТА]";
-
-                   startLine.appendChild(textSpan);
-                   output.appendChild(startLine);
-                        
-                    await this.renderStepByStep(matches[0].content, outputContainer, matches[0].id);
-                }
-                else {
-                    this.recentMatches = matches;
-                    // ПЕРЕДАЕМ query, чтобы функция знала, что подсвечивать
-                    this.displayRecent(terminal, query);
-                }
-
-            } catch (error) {
-                terminal.printError(`КРИТИЧЕСКАЯ ОШИБКА: ${error.message}`);
+                await this.renderStepByStep(matches[0].content, outputContainer, matches[0].id);
             }
-        },
-
-        displayRecent(terminal, query) {
-            if (this.recentMatches.length === 0) {
-                terminal.printSystem("СПИСОК ПУСТ.");
-                return;
+            else {
+                this.recentMatches = matches;
+                this.displayRecent(terminal, query);
             }
 
-            terminal.printSystem("\n--- РЕЗУЛЬТАТЫ ПОИСКА ---");
+        } catch (error) {
+            terminal.printError(`СИСТЕМНЫЙ СБОЙ: ${error.message}`);
+        }
+    },
 
-            this.recentMatches.forEach(m => {
-                // Очищаем текст от тегов для красивого превью
+    displayRecent(terminal, query) {
+        if (this.recentMatches.length === 0) {
+            terminal.printSystem("СПИСОК ПУСТ.");
+            return;
+        }
+
+        terminal.printSystem("\n--- РЕЗУЛЬТАТЫ ПОИСКА ---");
+
+        this.recentMatches.forEach(m => {
+            let preview = "";
+
+            if (query) {
+                // Очищаем текст от тегов
                 const cleanText = m.content.replace(/\[.*?\]/g, ' ').replace(/\s+/g, ' ').trim();
                 const words = cleanText.split(' ');
+                
+                const foundIndex = words.findIndex(w => w.toLowerCase().includes(query));
 
-                let preview = "";
-
-                // Проверяем, есть ли что искать в тексте (если это не просто get recent)
-                if (query) {
-                    const foundIndex = words.findIndex(w => w.toLowerCase().includes(query));
-
-                    if (foundIndex !== -1) {
-                        const start = Math.max(0, foundIndex - 3);
-                        const end = Math.min(words.length, foundIndex + 4);
-                        // .slice() вместо [:]
-                        const fragment = words.slice(start, end).join(' ');
-                        preview = `| ...${fragment}...`;
-                    }
+                if (foundIndex !== -1) {
+                    const start = Math.max(0, foundIndex - 3);
+                    const end = Math.min(words.length, foundIndex + 4);
+                    const fragment = words.slice(start, end).join(' ');
+                    preview = `...${fragment}...`;
                 }
+            }
 
-                terminal.printSystem(`[ID: ${m.id}] | ${m.title} - Контекст: "${preview}"`);
-            });
+            terminal.printSystem(`[ID: ${m.id}] | ${m.title}`);
+            if (preview) {
+                terminal.printSystem(`  └─ Контекст: "${preview}"`, '#888'); // Делаем превью серым
+            }
+        });
 
-            terminal.printSystem("---------------------------\n");
-            terminal.printSystem("Для доступа к нужной записи введите команду GET [ID]");
-        },
+        terminal.printSystem("---------------------------\n");
+        terminal.printSystem("Для доступа к нужной записи введите команду GET [ID]");
+    },
 
-    // Твой доведенный до идеала парсер
+    // Твой парсер (я не менял логику рендера, только оставил нужную сигнатуру)
     async renderStepByStep(content, output, folderId) {
         const lines = content.split('\n');
         let currentTable = null;
         let currentQuote = null;
 
-        // Формируем путь к текущей папке для правильной загрузки картинок
+        // Путь теперь указывает в правильную папку
         const currentDossierPath = `dossiers/${folderId}/`;
 
         const resetTheme = () => {
@@ -129,7 +158,6 @@ const CmdGet = {
             line = line.trim();
             if (!line) continue;
 
-            // 1. Обработка COLORCODES
             if (line.startsWith('[COLORCODES]')) {
                 let colors = {};
                 line.replace('[COLORCODES]', '').split(';').forEach(p => {
@@ -149,17 +177,9 @@ const CmdGet = {
             let el;
             let targetContainer = output;
 
-            // --- ИСПРАВЛЕННЫЙ БЛОК ЗАКРЫТИЯ ТЕГОВ ---
-            if (line.startsWith('[/TABLE6]')) { 
-                currentTable = null; 
-                continue; // Прерываем обработку этой строки и идем к следующей
-            }
-            if (line.startsWith('[/QUOTE]')) { 
-                currentQuote = null; 
-                continue; 
-            }
+            if (line.startsWith('[/TABLE6]')) { currentTable = null; continue; }
+            if (line.startsWith('[/QUOTE]')) { currentQuote = null; continue; }
             
-            // 2. Парсинг тегов
             if (line.startsWith('[TITLE]')) {
                 el = document.createElement('span'); el.className = 'glitch-title';
                 el.textContent = line.replace('[TITLE]', '');
@@ -173,7 +193,7 @@ const CmdGet = {
                 el = document.createElement('div');
                 let mode = p[2] ? p[2].trim().toLowerCase() : "right";
                 el.className = `scp-image-container ${mode}-mode visible`;
-                // Здесь используем динамический путь до картинки
+                // ДИНАМИЧЕСКИЙ ПУТЬ ДО КАРТИНКИ РАБОТАЕТ!
                 el.innerHTML = `<img src="${currentDossierPath}images/${p[0].trim()}"><div class="scp-image-caption">${p[1]||""}</div>`;
             }
             else if (line.startsWith('[TABLE6]')) {
@@ -189,7 +209,6 @@ const CmdGet = {
                 el.textContent = line.replace('[FOOTNOTE]', '');
             }
             else {
-                // 3. Обработка текста и табличных строк
                 if (currentTable && line.includes('||')) {
                     let tr = document.createElement('tr');
                     line.split('||').forEach(c => {
@@ -202,15 +221,13 @@ const CmdGet = {
                 } else {
                     el = document.createElement('p');
 
-                    // 1. Обработка центрирования
                     if (line.startsWith('[CENTER]')) {
-                        el.classList.add('center'); // Добавляем класс
-                        line = line.replace('[CENTER]', '').trim(); // УДАЛЯЕМ тег из строки, чтобы он не печатался
+                        el.classList.add('center'); 
+                        line = line.replace('[CENTER]', '').trim(); 
                     }
 
                     if (currentQuote) targetContainer = currentQuote;
 
-                    // 2. Магия парсинга форматирования
                     let html = line
                         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                         .replace(/\_(.*?)\_/g, '<em>$1</em>')
@@ -219,7 +236,6 @@ const CmdGet = {
                     let temp = document.createElement('div');
                     temp.innerHTML = html;
 
-                    // 3. Рекурсивная функция (оставляем твою, она отличная)
                     const wrapWords = (node) => {
                         if (node.nodeType === 3) {
                             let frag = document.createDocumentFragment();
@@ -246,34 +262,22 @@ const CmdGet = {
 
             targetContainer.appendChild(el);
 
-            // 4. Запуск анимации
             const words = el.querySelectorAll('.word');
             if (words.length > 0) {
                 let speedWarp = -0.025;
                 for (let w of words) {
-                    // 1. Показываем белый прямоугольник
                     w.classList.add('decrypting');
-
-                    // Ждем 30мс, пока висит прямоугольник
                     await new Promise(r => setTimeout(r, 30));
-
-                    // 2. Убираем прямоугольник и проявляем текст
                     w.classList.remove('decrypting');
                     w.classList.add('revealed');
-
-                    // Ждем 15мс перед следующим словом
                     await new Promise(r => setTimeout(r, 15 - speedWarp));
-
                     speedWarp -= speedWarp;
-
                     output.scrollTop = output.scrollHeight;
                 }
             } else {
-                // Для блоков без слов (картинки, разделители)
                 el.classList.add('visible');
                 await new Promise(r => setTimeout(r, 100));
             }
-
         }
 
         const endLine = document.createElement("div");
@@ -286,6 +290,5 @@ const CmdGet = {
         output.appendChild(endLine);
 
         output.scrollTop = output.scrollHeight;
-
     }
 };
