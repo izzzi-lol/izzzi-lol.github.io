@@ -149,8 +149,16 @@ const CmdGet = {
             let el;
             let targetContainer = output;
 
-            if (line.startsWith('[')) { currentTable = null; currentQuote = null; }
-
+            // --- ИСПРАВЛЕННЫЙ БЛОК ЗАКРЫТИЯ ТЕГОВ ---
+            if (line.startsWith('[/TABLE6]')) { 
+                currentTable = null; 
+                continue; // Прерываем обработку этой строки и идем к следующей
+            }
+            if (line.startsWith('[/QUOTE]')) { 
+                currentQuote = null; 
+                continue; 
+            }
+            
             // 2. Парсинг тегов
             if (line.startsWith('[TITLE]')) {
                 el = document.createElement('span'); el.className = 'glitch-title';
@@ -205,7 +213,7 @@ const CmdGet = {
                     // 2. Магия парсинга форматирования
                     let html = line
                         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                        .replace(/\/\/(.*?)\/\//g, '<em>$1</em>')
+                        .replace(/\_(.*?)\_/g, '<em>$1</em>')
                         .replace(/\[color=(#[0-9a-fA-F]{3,6})\](.*?)\[\/color\]/gi, '<span style="color:$1">$2</span>');
 
                     let temp = document.createElement('div');
