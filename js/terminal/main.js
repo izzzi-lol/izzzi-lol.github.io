@@ -16,6 +16,7 @@ async function handleUrlParams() {
         TerminalAPI.unlockInput();
     }
 
+    window.history.replaceState({}, document.title, window.location.pathname);
 }
 // --- ЛОГИКА АВТОРИЗАЦИИ ---
 async function startAuth() {
