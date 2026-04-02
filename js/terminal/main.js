@@ -13,7 +13,7 @@ async function handleUrlParams() {
         TerminalAPI.printSystem(`> АВТОМАТИЧЕСКИЙ ЗАПРОС СИСТЕМЫ: GET ${dossierId}`,'var(--terminal-green)');
         TerminalAPI.lockInput();
         await CmdGet.execute(dossierId, TerminalAPI);
-        TerminalAPI.lockInput();
+        TerminalAPI.unlockInput();
     }
 
 }
@@ -58,6 +58,7 @@ window.onload = () => {
         document.body.classList.remove('locked');
         localStorage.setItem('last_session', Date.now());
         input.focus();
+        handleUrlParams();
     }
 };
 
