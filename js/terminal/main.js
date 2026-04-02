@@ -12,7 +12,7 @@ async function handleUrlParams() {
     if (dossierId) {
         TerminalAPI.printSystem(`> АВТОМАТИЧЕСКИЙ ЗАПРОС СИСТЕМЫ: GET ${dossierId}`,'var(--terminal-green)');
         TerminalAPI.lockInput();
-        await CmdGet.execute(dossierId, TerminalAPI);
+        await CmdGet.execute([dossierId], TerminalAPI);
         TerminalAPI.unlockInput();
     }
 
@@ -49,7 +49,7 @@ async function startAuth() {
     }, 1000);
 }
 
-window.onload = () => {
+window.onload = async () => {
     const last = localStorage.getItem('last_session');
     if (!last || (Date.now() - last > 300000)) { // 5 минут
         document.body.classList.add('locked');
@@ -59,7 +59,7 @@ window.onload = () => {
         document.body.classList.remove('locked');
         localStorage.setItem('last_session', Date.now());
         input.focus();
-        handleUrlParams();
+        await handleUrlParams();
     }
 };
 
