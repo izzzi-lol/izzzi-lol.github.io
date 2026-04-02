@@ -5,6 +5,18 @@ const output = document.getElementById('dossier-output');
 const authOverlay = document.getElementById('auth-overlay');
 const authTerminal = document.getElementById('auth-terminal');
 
+async function handleUrlParams() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const dossierId = urlParams.get('get');
+
+    if (dossierId) {
+        TerminalAPI.printSystem(`> АВТОМАТИЧЕСКИЙ ЗАПРОС СИСТЕМЫ: GET ${dossierId}`,'var(--terminal-green)');
+        TerminalAPI.lockInput();
+        await CmdGet.execute(dossierId, TerminalAPI);
+        TerminalAPI.lockInput();
+    }
+
+}
 // --- ЛОГИКА АВТОРИЗАЦИИ ---
 async function startAuth() {
     authOverlay.style.display = 'flex';
@@ -25,11 +37,13 @@ async function startAuth() {
     setTimeout(() => {
         authOverlay.style.opacity = '0';
         authOverlay.style.transition = 'opacity 0.8s ease';
-        setTimeout(() => {
+        setTimeout(async () => {
             authOverlay.style.display = 'none';
             document.body.classList.remove('locked');
             localStorage.setItem('last_session', Date.now());
             input.focus();
+
+            await handleUrlParams();
         }, 800);
     }, 1000);
 }
