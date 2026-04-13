@@ -91,24 +91,6 @@ body {
     display: block; /* Разрешаем обтекание */
 }
 
-#dossier-output h1 { font-size: 2.2em; color: var(--theme-color); border-bottom: 2px solid var(--theme-color); }
-#dossier-output h2 { font-size: 1.8em; color: var(--theme-color); }
-#dossier-output h3 { font-size: 1.4em; text-transform: uppercase; }
-
-/* Тот самый центр */
-.center {
-    text-align: center;
-    width: 100%;
-    display: block;
-    margin: 10px 0;
-}
-
-/* Чтобы жирный текст выделялся */
-b {
-    color: #fff;
-    text-shadow: 0 0 5px rgba(255,255,255,0.3);
-}
-
 /* Цитаты */
 blockquote {
     border-left: 4px solid var(--theme-quote-border);
@@ -228,6 +210,12 @@ blockquote {
     /* На мобилках выключаем обтекание, картинка встает по центру */
     .scp-image-container { float: none !important; margin: 10px auto !important; width: 100% !important; }
     .glitch-title { font-size: 1.5em; }
+}
+
+.center {
+    text-align: center;
+    display: block; /* Чтобы p вел себя как блок и центрировал текст внутри */
+    width: 100%;
 }
 
 .clearfix { clear: both; }
