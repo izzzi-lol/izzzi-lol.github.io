@@ -1,294 +1,215 @@
-// НАСТРОЙКИ РЕПОЗИТОРИЯ (Впиши свои данные!)
-const GITHUB_USER = "izzzi-lol"; // Например, izzzi-lol
-const GITHUB_REPO = "izzzi-lol.github.io"; // Например, scp-terminal
+// НАСТРОЙКИ РЕПОЗИТОРИЯ
+const GITHUB_USER = "izzzi-lol"; 
+const GITHUB_REPO = "izzzi-lol.github.io"; 
 const DOSSIERS_ROOT = "dossiers"; 
+
+// Функция для обработки жирного текста и цветов внутри строк
+function parseInlineFormatting(text) {
+    return text
+        // Жирный текст: **текст** -> <b>текст</b>
+        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+        // Цвета: [COLOR=#hex]текст[/COLOR]
+        .replace(/\[COLOR=(.*?)\](.*?)\[\/COLOR\]/g, '<span style="color:$1">$2</span>')
+        // Если забыл закрыть цветовой тег в конце строки
+        .replace(/\[COLOR=(.*?)\](.*?)$/g, '<span style="color:$1">$2</span>');
+}
 
 const CmdGet = {
     recentMatches: [],
 
-    // --- НОВАЯ ФУНКЦИЯ ДЛЯ РАБОТЫ С GITHUB API ---
     async fetchAvailableFolders(terminal) {
         const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${DOSSIERS_ROOT}`;
         try {
             const response = await fetch(url);
             if (!response.ok) return [];
             const data = await response.json();
-            
-            // Нас интересуют только папки (директории), их имена — это ID досье
-            return data
-                .filter(item => item.type === 'dir')
-                .map(item => item.name);
+            return data.filter(item => item.type === 'dir').map(item => item.name);
         } catch (e) {
-            terminal.printError("Ошибка баз данных:", e);
+            terminal.printError("Ошибка подключения к базе данных.");
             return [];
         }
     },
 
     async execute(args, terminal) {
         if (args.length === 0) {
-            terminal.printError("ОШИБКА: Укажите ID или имя. Пример: get 01005423");
+            terminal.printError("ОШИБКА: Укажите ID или имя. Пример: get shade");
             return;
         }
 
         const query = args.join(' ').toLowerCase();
+        const output = document.getElementById('dossier-output');
+        output.innerHTML = ''; // Очистка перед загрузкой
 
-        if (query === 'recent') {
-            this.displayRecent(terminal, "");
-            return;
-        }
-
-        terminal.printSystem(`ИНИЦИАЛИЗАЦИЯ ПОИСКА: "${query.toUpperCase()}"...`);
+        terminal.printSystem(`ЗАПРОС ДАННЫХ: "${query.toUpperCase()}"...`);
 
         try {
-            // 1. ПОЛУЧАЕМ СПИСОК ПАПОК ЧЕРЕЗ API (ВМЕСТО list.json)
-            const folderIds = await this.fetchAvailableFolders(terminal);
-            
-            if (folderIds.length === 0) {
-                terminal.printError("КРИТИЧЕСКАЯ ОШИБКА: База данных недоступна или пуста.");
-                return;
-            }
+            const folders = await this.fetchAvailableFolders(terminal);
+            let found = false;
 
-            let matches = [];
+            for (const id of folders) {
+                const response = await fetch(`${DOSSIERS_ROOT}/${id}/dossier.txt`);
+                if (!response.ok) continue;
 
-            // 2. ПРОВЕРЯЕМ КАЖДЫЙ dossier.txt
-            for (const id of folderIds) {
-                const docResponse = await fetch(`${DOSSIERS_ROOT}/${id}/dossier.txt`);
-                if (!docResponse.ok) continue;
-
-                const content = await docResponse.text();
-                
-                // Ищем тег [TITLE], чтобы вытащить имя для превью
-                let title = "НЕИЗВЕСТНЫЙ СУБЪЕКТ";
-                const titleMatch = content.match(/\[TITLE\](.*)/);
-                if (titleMatch) {
-                    title = titleMatch[1].trim();
-                }
-
-                // Проверяем: совпадает ли ID папки или есть ли слово в тексте
-                if (id.toLowerCase() === query || content.toLowerCase().includes(query)) {
-                    matches.push({id, title, content});
+                const content = await response.text();
+                // Простая проверка на вхождение ника или ID
+                if (id.toLowerCase().includes(query) || content.toLowerCase().includes(query)) {
+                    await this.renderDossier(content, output);
+                    found = true;
+                    break;
                 }
             }
 
-            // 3. ОБРАБОТКА РЕЗУЛЬТАТОВ
-            if (matches.length === 0) {
-                terminal.printError(`СОВПАДЕНИЙ НЕ НАЙДЕНО.`);
-            } 
-            else if (matches.length === 1 && query !== 'recent') {
-                const outputContainer = TerminalAPI.getOutputNode(); // Используем API терминала
+            if (!found) terminal.printError("ОБЪЕКТ НЕ НАЙДЕН В СЕТИ SCIPNET.");
 
-                terminal.printSystem(`НАЙДЕНА ЗАПИСЬ ПО ID: ${matches[0].id}`);
-                await new Promise(r => setTimeout(r, 20));
-                terminal.printSystem(`Инициализация . . .`);
-
-                const startLine = document.createElement("div");
-                startLine.classList.add("doc-line");
-                const textSpan = document.createElement("span");
-                textSpan.textContent = "[НАЧАЛО ДОКУМЕНТА]";
-                startLine.appendChild(textSpan);
-                outputContainer.appendChild(startLine);
-                    
-                await this.renderStepByStep(matches[0].content, outputContainer, matches[0].id);
-            }
-            else {
-                this.recentMatches = matches;
-                this.displayRecent(terminal, query);
-            }
-
-        } catch (error) {
-            terminal.printError(`СИСТЕМНЫЙ СБОЙ: ${error.message}`);
+        } catch (e) {
+            terminal.printError("КРИТИЧЕСКИЙ СБОЙ ПРИ ЧТЕНИИ ФАЙЛА.");
         }
     },
 
-    displayRecent(terminal, query) {
-        if (this.recentMatches.length === 0) {
-            terminal.printSystem("СПИСОК ПУСТ.");
-            return;
-        }
-
-        terminal.printSystem("\n--- РЕЗУЛЬТАТЫ ПОИСКА ---");
-
-        this.recentMatches.forEach(m => {
-            let preview = "";
-
-            if (query) {
-                // Очищаем текст от тегов
-                const cleanText = m.content.replace(/\[.*?\]/g, ' ').replace(/\s+/g, ' ').trim();
-                const words = cleanText.split(' ');
-                
-                const foundIndex = words.findIndex(w => w.toLowerCase().includes(query));
-
-                if (foundIndex !== -1) {
-                    const start = Math.max(0, foundIndex - 3);
-                    const end = Math.min(words.length, foundIndex + 4);
-                    const fragment = words.slice(start, end).join(' ');
-                    preview = `...${fragment}...`;
-                }
-            }
-
-            terminal.printSystem(`[ID: ${m.id}] | ${m.title}`);
-            if (preview) {
-                terminal.printSystem(`  └─ Контекст: "${preview}"`, '#888'); // Делаем превью серым
-            }
-        });
-
-        terminal.printSystem("---------------------------\n");
-        terminal.printSystem("Для доступа к нужной записи введите команду GET [ID]");
-    },
-
-    // Твой парсер (я не менял логику рендера, только оставил нужную сигнатуру)
-    async renderStepByStep(content, output, folderId) {
-        const lines = content.split('\n');
+    async renderDossier(rawText, targetContainer) {
+        const lines = rawText.split('\n');
         let currentTable = null;
         let currentQuote = null;
-
-        // Путь теперь указывает в правильную папку
-        const currentDossierPath = `dossiers/${folderId}/`;
-
-        const resetTheme = () => {
-            const def = '#a200ff';
-            document.documentElement.style.setProperty('--theme-color', def);
-            document.documentElement.style.setProperty('--theme-quote-border', def);
-            document.documentElement.style.setProperty('--theme-quote-bg', 'rgba(162,0,255,0.05)');
-            document.documentElement.style.setProperty('--theme-table-bg', 'rgba(162,0,255,0.2)');
-        };
-        resetTheme();
 
         for (let line of lines) {
             line = line.trim();
             if (!line) continue;
 
+            // --- ОБРАБОТКА ЗАКРЫВАЮЩИХ ТЕГОВ (ТВОЙ ФИКС) ---
+            if (line.startsWith('[/TABLE6]')) { currentTable = null; continue; }
+            if (line.startsWith('[/QUOTE]')) { currentQuote = null; continue; }
+
+            // --- ОБРАБОТКА ЦВЕТОВ ТЕМЫ ---
             if (line.startsWith('[COLORCODES]')) {
-                let colors = {};
-                line.replace('[COLORCODES]', '').split(';').forEach(p => {
-                    let [k, v] = p.split('=');
-                    if (k && v) colors[k.trim()] = v.trim();
+                const parts = line.replace('[COLORCODES]', '').split(';');
+                parts.forEach(p => {
+                    const [key, val] = p.split('=').map(s => s.trim());
+                    if (key === 'Mainpage') document.documentElement.style.setProperty('--theme-color', val);
+                    if (key === 'Quotes') document.documentElement.style.setProperty('--theme-quote-border', val);
+                    if (key === 'Tables') document.documentElement.style.setProperty('--theme-table-bg', val + '33'); // +33 для прозрачности 20%
                 });
-                let b = colors['Mainpage'] || '#a200ff';
-                let q = colors['Quotes'] || b;
-                let t = colors['Tables'] || b;
-                document.documentElement.style.setProperty('--theme-color', b);
-                document.documentElement.style.setProperty('--theme-quote-border', q);
-                document.documentElement.style.setProperty('--theme-quote-bg', q + '0D');
-                document.documentElement.style.setProperty('--theme-table-bg', t + '33');
                 continue;
             }
 
             let el;
-            let targetContainer = output;
 
-            if (line.startsWith('[/TABLE6]')) { currentTable = null; continue; }
-            if (line.startsWith('[/QUOTE]')) { currentQuote = null; continue; }
-            
+            // --- ПАРСИНГ ТЕГОВ ---
             if (line.startsWith('[TITLE]')) {
-                el = document.createElement('span'); el.className = 'glitch-title';
-                el.textContent = line.replace('[TITLE]', '');
+                el = document.createElement('span');
+                el.className = 'glitch-title';
+                el.textContent = line.replace('[TITLE]', '').trim();
+            }
+            else if (line.match(/^\[H[1-6]\]/)) {
+                const level = line.match(/^\[H([1-6])\]/)[1];
+                el = document.createElement('h' + level);
+                el.innerHTML = parseInlineFormatting(line.replace(`[H${level}]`, '').trim());
             }
             else if (line.startsWith('[DANGER]')) {
-                el = document.createElement('div'); el.className = 'danger-diamond';
-                el.textContent = line.replace('[DANGER]', '');
+                el = document.createElement('div');
+                el.className = 'danger-diamond';
+                el.innerHTML = `⚠️ ${parseInlineFormatting(line.replace('[DANGER]', '').trim())}`;
+            }
+            else if (line.startsWith('[CENTER]')) {
+                el = document.createElement('div');
+                el.className = 'center';
+                el.innerHTML = parseInlineFormatting(line.replace('[CENTER]', '').trim());
             }
             else if (line.startsWith('[IMAGE]')) {
-                let p = line.replace('[IMAGE]', '').split('||');
+                const [src, desc, side] = line.replace('[IMAGE]', '').split('||').map(s => s.trim());
                 el = document.createElement('div');
-                let mode = p[2] ? p[2].trim().toLowerCase() : "right";
-                el.className = `scp-image-container ${mode}-mode visible`;
-                // ДИНАМИЧЕСКИЙ ПУТЬ ДО КАРТИНКИ РАБОТАЕТ!
-                el.innerHTML = `<img src="${currentDossierPath}images/${p[0].trim()}"><div class="scp-image-caption">${p[1]||""}</div>`;
+                el.className = `scp-image-container ${side || 'right'}`;
+                el.innerHTML = `<img src="dossiers/images/${src}" class="scp-image"><p class="image-caption">${desc || ''}</p>`;
             }
             else if (line.startsWith('[TABLE6]')) {
-                let wrapper = document.createElement('div'); wrapper.className = 'table-wrapper visible';
-                currentTable = document.createElement('table'); currentTable.className = 'table6';
-                wrapper.appendChild(currentTable); el = wrapper;
+                currentTable = document.createElement('table');
+                currentTable.className = 'dossier-table';
+                targetContainer.appendChild(currentTable);
+                continue;
             }
             else if (line.startsWith('[QUOTE]')) {
-                currentQuote = document.createElement('blockquote'); el = currentQuote;
-            }
-            else if (line.startsWith('[FOOTNOTE]')) {
-                el = document.createElement('div'); el.className = 'footnote';
-                el.textContent = line.replace('[FOOTNOTE]', '');
+                currentQuote = document.createElement('blockquote');
+                targetContainer.appendChild(currentQuote);
+                continue;
             }
             else {
-                if (currentTable && line.includes('||')) {
-                    let tr = document.createElement('tr');
-                    line.split('||').forEach(c => {
-                        let td = document.createElement('td');
-                        td.innerHTML = c.trim().replace(/\[color=(#[0-9a-fA-F]{3,6})\](.*?)\[\/color\]/gi, '<span style="color:$1">$2</span>');
-                        tr.appendChild(td);
+                // Если мы внутри таблицы или цитаты
+                if (currentTable) {
+                    const row = currentTable.insertRow();
+                    line.split('||').forEach(cellText => {
+                        const cell = row.insertCell();
+                        cell.innerHTML = parseInlineFormatting(cellText.trim());
                     });
-                    currentTable.appendChild(tr);
                     continue;
-                } else {
-                    el = document.createElement('p');
-
-                    if (line.startsWith('[CENTER]')) {
-                        el.classList.add('center'); 
-                        line = line.replace('[CENTER]', '').trim(); 
-                    }
-
-                    if (currentQuote) targetContainer = currentQuote;
-
-                    let html = line
-                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                        .replace(/\_(.*?)\_/g, '<em>$1</em>')
-                        .replace(/\[color=(#[0-9a-fA-F]{3,6})\](.*?)\[\/color\]/gi, '<span style="color:$1">$2</span>');
-
-                    let temp = document.createElement('div');
-                    temp.innerHTML = html;
-
-                    const wrapWords = (node) => {
-                        if (node.nodeType === 3) {
-                            let frag = document.createDocumentFragment();
-                            node.nodeValue.split(' ').forEach((w, i, a) => {
-                                if (w.trim()) {
-                                    let s = document.createElement('span');
-                                    s.className = 'word';
-                                    s.textContent = w;
-                                    frag.appendChild(s);
-                                }
-                                if (i < a.length - 1) frag.appendChild(document.createTextNode(' '));
-                            });
-                            return frag;
-                        } else {
-                            let clone = node.cloneNode(false);
-                            node.childNodes.forEach(c => clone.appendChild(wrapWords(c)));
-                            return clone;
-                        }
-                    };
-
-                    Array.from(temp.childNodes).forEach(n => el.appendChild(wrapWords(n)));
+                }
+                
+                el = document.createElement('p');
+                el.innerHTML = parseInlineFormatting(line);
+                if (currentQuote) {
+                    currentQuote.appendChild(el);
                 }
             }
 
-            targetContainer.appendChild(el);
+            if (!el) continue;
 
-            const words = el.querySelectorAll('.word');
-            if (words.length > 0) {
-                let speedWarp = -0.025;
+            // --- ЭФФЕКТ ПОЯВЛЕНИЯ ТЕКСТА ---
+            if (!currentQuote && !currentTable) {
+                targetContainer.appendChild(el);
+            }
+
+            if (el.tagName !== 'DIV' && !el.querySelector('img')) {
+                const rawHTML = el.innerHTML;
+                el.innerHTML = '';
+                
+                const temp = document.createElement('span');
+                temp.innerHTML = rawHTML;
+
+                const wrapWords = (node) => {
+                    if (node.nodeType === 3) { // Текст
+                        const frag = document.createDocumentFragment();
+                        node.textContent.split(' ').forEach(word => {
+                            if (!word) return;
+                            const span = document.createElement('span');
+                            span.className = 'word';
+                            span.textContent = word + ' ';
+                            frag.appendChild(span);
+                        });
+                        return frag;
+                    } else {
+                        let clone = node.cloneNode(false);
+                        node.childNodes.forEach(c => clone.appendChild(wrapWords(c)));
+                        return clone;
+                    }
+                };
+
+                Array.from(temp.childNodes).forEach(n => el.appendChild(wrapWords(n)));
+
+                const words = el.querySelectorAll('.word');
+                let speedWarp = 0;
                 for (let w of words) {
                     w.classList.add('decrypting');
-                    await new Promise(r => setTimeout(r, 30));
+                    await new Promise(r => setTimeout(r, 20));
                     w.classList.remove('decrypting');
                     w.classList.add('revealed');
-                    await new Promise(r => setTimeout(r, 15 - speedWarp));
-                    speedWarp -= speedWarp;
-                    output.scrollTop = output.scrollHeight;
+                    
+                    // Плавное ускорение, но не до нуля
+                    await new Promise(r => setTimeout(r, Math.max(2, 15 - speedWarp)));
+                    speedWarp += 0.2;
+                    
+                    targetContainer.scrollTop = targetContainer.scrollHeight;
                 }
             } else {
                 el.classList.add('visible');
+                targetContainer.scrollTop = targetContainer.scrollHeight;
                 await new Promise(r => setTimeout(r, 100));
             }
         }
-
-        const endLine = document.createElement("div");
-        endLine.classList.add("doc-line");
-
-        const textSpan = document.createElement("span");
-        textSpan.textContent = "[КОНЕЦ ДОКУМЕНТА]";
-
-        endLine.appendChild(textSpan);
-        output.appendChild(endLine);
-
-        output.scrollTop = output.scrollHeight;
+        
+        // Финальная черта
+        const end = document.createElement('div');
+        end.style.textAlign = 'center';
+        end.style.margin = '40px 0';
+        end.style.opacity = '0.5';
+        end.textContent = '--- КОНЕЦ ДОКУМЕНТА ---';
+        targetContainer.appendChild(end);
     }
 };
