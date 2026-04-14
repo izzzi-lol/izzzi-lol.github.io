@@ -176,6 +176,15 @@ blockquote {
 .danger-diamond { border: 2px solid var(--danger-color); background: rgba(230, 40, 60, 0.1); padding: 20px; margin: 20px 0; text-align: center; color: #ff4d4d; font-weight: bold; }
 .footnote { clear: both; font-size: 0.85em; color: #888; border-top: 1px solid #333; margin-top: 40px; padding-top: 10px; }
 
+.scp-header {
+    margin: 15px 0 10px 0;
+    font-weight: bold;
+    color: var(--theme-color); /* Будут краситься в цвет текущей темы */
+}
+.scp-h1 { font-size: 1.5em; text-transform: uppercase; }
+.scp-h2 { font-size: 1.3em; border-bottom: 1px solid var(--theme-color); padding-bottom: 5px; }
+.scp-h3 { font-size: 1.1em; }
+
 .doc-end {
     clear: both;
     font-size: 1.5em;

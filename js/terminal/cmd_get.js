@@ -13,7 +13,7 @@ const CmdGet = {
             const response = await fetch(url);
             if (!response.ok) return [];
             const data = await response.json();
-            
+
             // Нас интересуют только папки (директории), их имена — это ID досье
             return data
                 .filter(item => item.type === 'dir')
@@ -42,7 +42,7 @@ const CmdGet = {
         try {
             // 1. ПОЛУЧАЕМ СПИСОК ПАПОК ЧЕРЕЗ API (ВМЕСТО list.json)
             const folderIds = await this.fetchAvailableFolders(terminal);
-            
+
             if (folderIds.length === 0) {
                 terminal.printError("КРИТИЧЕСКАЯ ОШИБКА: База данных недоступна или пуста.");
                 return;
@@ -56,7 +56,7 @@ const CmdGet = {
                 if (!docResponse.ok) continue;
 
                 const content = await docResponse.text();
-                
+
                 // Ищем тег [TITLE], чтобы вытащить имя для превью
                 let title = "НЕИЗВЕСТНЫЙ СУБЪЕКТ";
                 const titleMatch = content.match(/\[TITLE\](.*)/);
@@ -73,8 +73,7 @@ const CmdGet = {
             // 3. ОБРАБОТКА РЕЗУЛЬТАТОВ
             if (matches.length === 0) {
                 terminal.printError(`СОВПАДЕНИЙ НЕ НАЙДЕНО.`);
-            } 
-            else if (matches.length === 1 && query !== 'recent') {
+            } else if (matches.length === 1 && query !== 'recent') {
                 const outputContainer = TerminalAPI.getOutputNode(); // Используем API терминала
 
                 terminal.printSystem(`НАЙДЕНА ЗАПИСЬ ПО ID: ${matches[0].id}`);
@@ -87,10 +86,9 @@ const CmdGet = {
                 textSpan.textContent = "[НАЧАЛО ДОКУМЕНТА]";
                 startLine.appendChild(textSpan);
                 outputContainer.appendChild(startLine);
-                    
+
                 await this.renderStepByStep(matches[0].content, outputContainer, matches[0].id);
-            }
-            else {
+            } else {
                 this.recentMatches = matches;
                 this.displayRecent(terminal, query);
             }
@@ -115,7 +113,7 @@ const CmdGet = {
                 // Очищаем текст от тегов
                 const cleanText = m.content.replace(/\[.*?\]/g, ' ').replace(/\s+/g, ' ').trim();
                 const words = cleanText.split(' ');
-                
+
                 const foundIndex = words.findIndex(w => w.toLowerCase().includes(query));
 
                 if (foundIndex !== -1) {
@@ -177,53 +175,74 @@ const CmdGet = {
             let el;
             let targetContainer = output;
 
-            if (line.startsWith('[/TABLE6]')) { currentTable = null; continue; }
-            if (line.startsWith('[/QUOTE]')) { currentQuote = null; continue; }
-            
+            if (line.startsWith('[/TABLE6]')) {
+                currentTable = null;
+                continue;
+            }
+            if (line.startsWith('[/QUOTE]')) {
+                currentQuote = null;
+                continue;
+            }
+
             if (line.startsWith('[TITLE]')) {
-                el = document.createElement('span'); el.className = 'glitch-title';
+                el = document.createElement('span');
+                el.className = 'glitch-title';
                 el.textContent = line.replace('[TITLE]', '');
-            }
-            else if (line.startsWith('[DANGER]')) {
-                el = document.createElement('div'); el.className = 'danger-diamond';
+            } else if (line.startsWith('[DANGER]')) {
+                el = document.createElement('div');
+                el.className = 'danger-diamond';
                 el.textContent = line.replace('[DANGER]', '');
-            }
-            else if (line.startsWith('[IMAGE]')) {
+            } else if (line.startsWith('[IMAGE]')) {
                 let p = line.replace('[IMAGE]', '').split('||');
                 el = document.createElement('div');
                 let mode = p[2] ? p[2].trim().toLowerCase() : "right";
                 el.className = `scp-image-container ${mode}-mode visible`;
                 // ДИНАМИЧЕСКИЙ ПУТЬ ДО КАРТИНКИ РАБОТАЕТ!
-                el.innerHTML = `<img src="${currentDossierPath}images/${p[0].trim()}"><div class="scp-image-caption">${p[1]||""}</div>`;
-            }
-            else if (line.startsWith('[TABLE6]')) {
-                let wrapper = document.createElement('div'); wrapper.className = 'table-wrapper visible';
-                currentTable = document.createElement('table'); currentTable.className = 'table6';
-                wrapper.appendChild(currentTable); el = wrapper;
-            }
-            else if (line.startsWith('[QUOTE]')) {
-                currentQuote = document.createElement('blockquote'); el = currentQuote;
-            }
-            else if (line.startsWith('[FOOTNOTE]')) {
-                el = document.createElement('div'); el.className = 'footnote';
+                el.innerHTML = `<img src="${currentDossierPath}images/${p[0].trim()}"><div class="scp-image-caption">${p[1] || ""}</div>`;
+            } else if (line.startsWith('[TABLE6]')) {
+                let wrapper = document.createElement('div');
+                wrapper.className = 'table-wrapper visible';
+                currentTable = document.createElement('table');
+                currentTable.className = 'table6';
+                wrapper.appendChild(currentTable);
+                el = wrapper;
+            } else if (line.startsWith('[QUOTE]')) {
+                currentQuote = document.createElement('blockquote');
+                el = currentQuote;
+            } else if (line.startsWith('[FOOTNOTE]')) {
+                el = document.createElement('div');
+                el.className = 'footnote';
                 el.textContent = line.replace('[FOOTNOTE]', '');
-            }
-            else {
+            } else {
                 if (currentTable && line.includes('||')) {
                     let tr = document.createElement('tr');
                     line.split('||').forEach(c => {
                         let td = document.createElement('td');
-                        td.innerHTML = c.trim().replace(/\[color=(#[0-9a-fA-F]{3,6})\](.*?)\[\/color\]/gi, '<span style="color:$1">$2</span>');
+                        td.innerHTML = c.trim()
+                            .replace(/\[color=(#[0-9a-fA-F]{3,6})\](.*?)\[\/color\]/gi, '<span style="color:$1">$2</span>')
+                            .replace(/\[bgcolor=(#[0-9a-fA-F]{3,6})\](.*?)\[\/bgcolor\]/gi, '<span style="background-color:$1; padding: 0 4px; border-radius: 2px;">$2</span>');
                         tr.appendChild(td);
                     });
                     currentTable.appendChild(tr);
                     continue;
                 } else {
-                    el = document.createElement('p');
+                    // --- ДОБАВЛЕНА ПОДДЕРЖКА ЗАГОЛОВКОВ H1-H6 ---
+                    const headerMatch = line.match(/^\[H([1-6])\]/i);
 
+                    if (headerMatch) {
+                        const level = headerMatch[1];
+                        el = document.createElement(`h${level}`); // Создает h1, h2, h3...
+                        el.classList.add('scp-header', `scp-h${level}`); // Классы для гибкой настройки в CSS
+                        line = line.replace(headerMatch[0], '').trim(); // Вырезаем тег из текста
+                    } else {
+                        el = document.createElement('p'); // Стандартный абзац, если это не заголовок
+                    }
+                    // --------------------------------------------
+
+                    // Проверка на CENTER теперь работает и для абзацев, и для заголовков
                     if (line.startsWith('[CENTER]')) {
-                        el.classList.add('center'); 
-                        line = line.replace('[CENTER]', '').trim(); 
+                        el.classList.add('center');
+                        line = line.replace('[CENTER]', '').trim();
                     }
 
                     if (currentQuote) targetContainer = currentQuote;
@@ -231,7 +250,8 @@ const CmdGet = {
                     let html = line
                         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                         .replace(/\_(.*?)\_/g, '<em>$1</em>')
-                        .replace(/\[color=(#[0-9a-fA-F]{3,6})\](.*?)\[\/color\]/gi, '<span style="color:$1">$2</span>');
+                        .replace(/\[color=(#[0-9a-fA-F]{3,6})\](.*?)\[\/color\]/gi, '<span style="color:$1">$2</span>')
+                        .replace(/\[bgcolor=(#[0-9a-fA-F]{3,6})\](.*?)\[\/bgcolor\]/gi, '<span style="background-color:$1; padding: 0 4px; border-radius: 2px;">$2</span>');
 
                     let temp = document.createElement('div');
                     temp.innerHTML = html;
