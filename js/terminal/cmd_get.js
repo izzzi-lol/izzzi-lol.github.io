@@ -257,7 +257,8 @@ const CmdGet = {
                         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                         .replace(/\_(.*?)\_/g, '<em>$1</em>')
                         .replace(/\[color=(#[0-9a-fA-F]{3,6})\](.*?)\[\/color\]/gi, '<span style="color:$1">$2</span>')
-                        .replace(/\[bgcolor=(#[0-9a-fA-F]{3,6})\](.*?)\[\/bgcolor\]/gi, '<span style="background-color:$1; padding: 0 4px; border-radius: 2px;">$2</span>');
+                        .replace(/\[bgcolor=(#[0-9a-fA-F]{3,6})\](.*?)\[\/bgcolor\]/gi, '<span style="background-color:$1; padding: 0 4px; border-radius: 2px;">$2</span>')
+                        .replace(/\[HREF=(.*?)\](.*?)\[\/HREF\]/gi, '<a href="$1" target="_blank" class="scp-link">$2</a>');
 
                     let temp = document.createElement('div');
                     temp.innerHTML = html;

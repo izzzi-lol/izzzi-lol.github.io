@@ -191,6 +191,30 @@ blockquote {
     margin-bottom: 0; /* Убираем лишний отступ у последнего абзаца */
 }
 
+/* --- ССЫЛКИ [HREF] --- */
+.scp-link {
+    color: var(--theme-color);
+    text-decoration: none;
+    font-weight: bold;
+    border-bottom: 1px dashed var(--theme-color);
+
+    /* Добавляем базовое свечение */
+    text-shadow: 0 0 5px var(--theme-color);
+
+    /* Делаем цвет ярче на 40% (отлично работает с любым --theme-color) */
+    filter: brightness(1.4);
+
+    /* Плавный переход для наведения */
+    transition: all 0.2s ease-in-out;
+}
+
+/* Эффект при наведении (hover) */
+.scp-link:hover {
+    filter: brightness(1.8); /* Делаем еще ярче */
+    text-shadow: 0 0 8px var(--theme-color), 0 0 15px var(--theme-color); /* Усиливаем glow */
+    border-bottom-style: solid; /* Меняем пунктир на сплошную линию */
+}
+
 .scp-header {
     margin: 15px 0 10px 0;
     font-weight: bold;
