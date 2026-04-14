@@ -174,7 +174,22 @@ blockquote {
 /* 7. ДЕКОР И АНИМАЦИЯ */
 .glitch-title { color: var(--theme-color); font-family: var(--head-font); font-size: 2em; text-align: center; display: block; margin: 20px 0; text-transform: uppercase; letter-spacing: 5px; }
 .danger-diamond { border: 2px solid var(--danger-color); background: rgba(230, 40, 60, 0.1); padding: 20px; margin: 20px 0; text-align: center; color: #ff4d4d; font-weight: bold; }
-.footnote { clear: both; font-size: 0.85em; color: #888; border-top: 1px solid #333; margin-top: 40px; padding-top: 10px; }
+.footnote {
+    clear: both;
+    font-size: 0.85em;
+    color: #888;
+    border-top: 1px solid #333;
+    margin-top: 40px;
+    padding-top: 10px;
+}
+
+/* ДОБАВИТЬ ЭТО: */
+.footnote p {
+    margin-bottom: 0.5em; /* Делаем отступы между абзацами в сноске чуть меньше */
+}
+.footnote p:last-child {
+    margin-bottom: 0; /* Убираем лишний отступ у последнего абзаца */
+}
 
 .scp-header {
     margin: 15px 0 10px 0;

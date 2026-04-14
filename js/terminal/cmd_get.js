@@ -139,6 +139,7 @@ const CmdGet = {
         const lines = content.split('\n');
         let currentTable = null;
         let currentQuote = null;
+        let currentFootnote = null;
 
         // Путь теперь указывает в правильную папку
         const currentDossierPath = `dossiers/${folderId}/`;
@@ -179,6 +180,10 @@ const CmdGet = {
                 currentTable = null;
                 continue;
             }
+            if (line.startsWith('[/FOOTNOTE]')) {
+                currentFootnote = null;
+                continue;
+            }
             if (line.startsWith('[/QUOTE]')) {
                 currentQuote = null;
                 continue;
@@ -210,9 +215,9 @@ const CmdGet = {
                 currentQuote = document.createElement('blockquote');
                 el = currentQuote;
             } else if (line.startsWith('[FOOTNOTE]')) {
-                el = document.createElement('div');
-                el.className = 'footnote';
-                el.textContent = line.replace('[FOOTNOTE]', '');
+                currentFootnote = document.createElement('div');
+                currentFootnote.className = 'footnote';
+                el = currentFootnote;
             } else {
                 if (currentTable && line.includes('||')) {
                     let tr = document.createElement('tr');
@@ -246,6 +251,7 @@ const CmdGet = {
                     }
 
                     if (currentQuote) targetContainer = currentQuote;
+                    else if (currentFootnote) targetContainer = currentFootnote;
 
                     let html = line
                         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
