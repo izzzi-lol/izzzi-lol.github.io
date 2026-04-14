@@ -1,8 +1,8 @@
-[TITLE] «МОДЕРАТОР»
-[COLORCODES] Mainpage=#FF3131; Quotes=#D3D3D3; Tables=#8B0000
-
 [DANGER] ВНИМАНИЕ: ОБНАРУЖЕН ВЗЛОМ СЕТИ SCIPNET
 [DANGER] ИНФОРМАЦИЯ ПЕРЕХВАЧЕНА ИЗ СЕРВЕРОВ ГРУППЫ «БЕТА-ПХ»
+
+[COLORCODES] Mainpage=#FF3131; Quotes=#D3D3D3; Tables=#8B0000
+[TITLE] «МОДЕРАТОР»
 
 [IMAGE]shade_cyborg.jpg || Реконструкция внешнего вида после кибернетизации || left
 
