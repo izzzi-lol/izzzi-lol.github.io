@@ -386,8 +386,8 @@ const CmdGet = {
         const endLine = document.createElement("div");
         endLine.classList.add("doc-line");
         const textSpan_End = document.createElement("span");
-        textSpan.textContent = "[КОНЕЦ ДОКУМЕНТА]";
-        endLine.appendChild(textSpan_end);
+        textSpan_End.textContent = "[КОНЕЦ ДОКУМЕНТА]";
+        endLine.appendChild(textSpan_End);
         output.appendChild(endLine);
 
         output.scrollTop = output.scrollHeight;
