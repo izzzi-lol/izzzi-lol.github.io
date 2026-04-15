@@ -11,6 +11,7 @@
     --theme-quote-border: #a200ff;
     --theme-quote-bg: rgba(162, 0, 255, 0.05);
     --theme-table-bg: rgba(162, 0, 255, 0.2);
+    --img-scale: 1;
 }
 
 /* 1. БАЗОВЫЕ НАСТРОЙКИ */
@@ -154,19 +155,36 @@ blockquote {
     width: 30%; 
 }
 
-/* 6. ИЗОБРАЖЕНИЯ */
+/* --- СЕКЦИЯ 6: ИЗОБРАЖЕНИЯ (ОБНОВЛЕННАЯ) --- */
 .scp-image-container {
+    --base-width: 300px; /* Базовая ширина для выравнивания слева/справа */
     background: #050505;
     padding: 4px;
     border: 1px solid #444;
     margin-bottom: 20px;
     z-index: 2;
     position: relative;
+    box-sizing: border-box;
 }
 
-.right-mode { float: right; margin: 0 0 15px 20px; width: 300px; }
-.left-mode { float: left; margin: 0 20px 15px 0; width: 300px; }
-.full-mode { float: none; margin: 20px auto; width: 100%; max-width: 800px; clear: both; }
+/* Используем переменную масштаба. Если она не задана в JS, применится 1 */
+.right-mode {
+    float: right;
+    margin: 0 0 15px 20px;
+    width: calc(var(--base-width) * var(--img-scale, 1));
+}
+.left-mode {
+    float: left;
+    margin: 0 20px 15px 0;
+    width: calc(var(--base-width) * var(--img-scale, 1));
+}
+.full-mode {
+    float: none;
+    margin: 20px auto;
+    width: 100%;
+    max-width: 800px;
+    clear: both;
+}
 
 .scp-image-container img { width: 100%; height: auto; display: block; }
 .scp-image-caption { font-family: var(--mono-font); font-size: 0.75em; color: #888; text-align: center; padding: 10px; border-top: 1px solid #222; }
@@ -256,7 +274,13 @@ blockquote {
     #console-area { height: 20px !important; font-size: 0.85em; }
     #dossier-output { padding: 15px; }
     /* На мобилках выключаем обтекание, картинка встает по центру */
-    .scp-image-container { float: none !important; margin: 10px auto !important; width: 100% !important; }
+    .scp-image-container {
+        float: none !important;
+        margin: 10px auto !important;
+        /* На мобилках масштаб игнорируем, чтобы картинка не вылезла за экран */
+        width: 100% !important;
+        max-width: 100% !important;
+    }
     .glitch-title { font-size: 1.5em; }
 }
 
@@ -330,4 +354,69 @@ body.locked {
     border-color: var(--terminal-green) !important;
     color: var(--terminal-green);
     margin-top: 20px;
+}
+
+
+/* --- СТИЛИ MARKDOWN ДЛЯ SCP --- */
+
+/* Списки */
+.scp-list {
+    margin: 10px 0 15px 0;
+    padding-left: 25px;
+    list-style-type: square; /* Квадратные маркеры смотрятся техничнее */
+}
+.scp-list li {
+    margin-bottom: 6px;
+}
+.scp-list li::marker {
+    color: var(--theme-color); /* Маркеры цвета темы! */
+}
+
+/* Горизонтальная линия (---) */
+.scp-hr {
+    border: none;
+    border-bottom: 1px dashed var(--theme-color);
+    opacity: 0.5;
+    margin: 30px 0;
+}
+
+/* Инлайн-код `текст` */
+.scp-inline-code {
+    font-family: var(--mono-font);
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--terminal-green); /* Выделяем хакерским зеленым */
+    font-size: 0.9em;
+    border: 1px solid rgba(0, 255, 65, 0.2);
+}
+
+/* Плашка цензуры ==ДАННЫЕ УДАЛЕНЫ== */
+.scp-redacted {
+    background-color: #d1d1d1; /* Имитация плотного светлого маркера на темной бумаге */
+    color: transparent;        /* Скрываем текст */
+    padding: 0 5px;
+    border-radius: 2px;
+    user-select: none;         /* Запрещаем выделение текста */
+    transition: all 0.3s ease;
+}
+
+/* Секретный функционал: при наведении текст слегка проступает сквозь маркер */
+.scp-redacted:hover {
+    background-color: #1a1a1a;
+    color: #666;
+    border: 1px solid #333;
+    cursor: help;
+}
+
+/* Добавь это в конец terminal.css */
+
+/* Правила ТОЛЬКО для устройств без мыши (телефоны/планшеты) */
+@media (hover: none) {
+    /* Цензура просвечивает, пока пользователь держит на ней палец */
+    .scp-redacted:active {
+        background-color: #1a1a1a;
+        color: #666;
+        border: 1px solid #333;
+    }
 }

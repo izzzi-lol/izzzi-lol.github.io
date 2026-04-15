@@ -1,7 +1,7 @@
 // НАСТРОЙКИ РЕПОЗИТОРИЯ (Впиши свои данные!)
 const GITHUB_USER = "izzzi-lol"; // Например, izzzi-lol
 const GITHUB_REPO = "izzzi-lol.github.io"; // Например, scp-terminal
-const DOSSIERS_ROOT = "dossiers"; 
+const DOSSIERS_ROOT = "dossiers";
 
 const CmdGet = {
     recentMatches: [],
@@ -43,6 +43,8 @@ const CmdGet = {
             // 1. ПОЛУЧАЕМ СПИСОК ПАПОК ЧЕРЕЗ API (ВМЕСТО list.json)
             const folderIds = await this.fetchAvailableFolders(terminal);
 
+            const outputContainer = TerminalAPI.getOutputNode(); // Используем API терминала
+
             if (folderIds.length === 0) {
                 terminal.printError("КРИТИЧЕСКАЯ ОШИБКА: База данных недоступна или пуста.");
                 return;
@@ -50,15 +52,28 @@ const CmdGet = {
 
             let matches = [];
 
-            // 2. ПРОВЕРЯЕМ КАЖДЫЙ dossier.txt
+            // 1. ПРОВЕРКА НА ТОЧНЫЙ ID (Твой запрос)
+            if (folderIds.includes(query)) {
+                const docResponse = await fetch(`dossiers/${query}/dossier.txt`);
+                if (docResponse.ok) {
+                    const content = await docResponse.text();
+                    terminal.printSystem(`ДОКУМЕНТ ПО ID НАЙДЕН.`);
+                    await new Promise(r => setTimeout(r, 20));
+                    await this.renderStepByStep(content, terminal.output);
+                    return; // Сразу выходим, если нашли по ID
+                }
+            }
+
+            // 2.2 ПРОВЕРЯЕМ КАЖДЫЙ dossier.txt
             for (const id of folderIds) {
+
                 const docResponse = await fetch(`${DOSSIERS_ROOT}/${id}/dossier.txt`);
                 if (!docResponse.ok) continue;
 
                 const content = await docResponse.text();
 
                 // Ищем тег [TITLE], чтобы вытащить имя для превью
-                let title = "НЕИЗВЕСТНЫЙ СУБЪЕКТ";
+                let title = "UNNAMED";
                 const titleMatch = content.match(/\[TITLE\](.*)/);
                 if (titleMatch) {
                     title = titleMatch[1].trim();
@@ -74,18 +89,10 @@ const CmdGet = {
             if (matches.length === 0) {
                 terminal.printError(`СОВПАДЕНИЙ НЕ НАЙДЕНО.`);
             } else if (matches.length === 1 && query !== 'recent') {
-                const outputContainer = TerminalAPI.getOutputNode(); // Используем API терминала
 
                 terminal.printSystem(`НАЙДЕНА ЗАПИСЬ ПО ID: ${matches[0].id}`);
                 await new Promise(r => setTimeout(r, 20));
                 terminal.printSystem(`Инициализация . . .`);
-
-                const startLine = document.createElement("div");
-                startLine.classList.add("doc-line");
-                const textSpan = document.createElement("span");
-                textSpan.textContent = "[НАЧАЛО ДОКУМЕНТА]";
-                startLine.appendChild(textSpan);
-                outputContainer.appendChild(startLine);
 
                 await this.renderStepByStep(matches[0].content, outputContainer, matches[0].id);
             } else {
@@ -135,11 +142,12 @@ const CmdGet = {
     },
 
     // Твой парсер (я не менял логику рендера, только оставил нужную сигнатуру)
-    async renderStepByStep(content, output, folderId) {
+    async renderStepByStep(content, output, folderId, localImageMap = {}) {
         const lines = content.split('\n');
         let currentTable = null;
         let currentQuote = null;
         let currentFootnote = null;
+        let currentList = null;
 
         // Путь теперь указывает в правильную папку
         const currentDossierPath = `dossiers/${folderId}/`;
@@ -152,6 +160,13 @@ const CmdGet = {
             document.documentElement.style.setProperty('--theme-table-bg', 'rgba(162,0,255,0.2)');
         };
         resetTheme();
+
+        const startLine = document.createElement("div");
+        startLine.classList.add("doc-line");
+        const textSpan = document.createElement("span");
+        textSpan.textContent = "[НАЧАЛО ДОКУМЕНТА]";
+        startLine.appendChild(textSpan);
+        output.appendChild(startLine);
 
         for (let line of lines) {
             line = line.trim();
@@ -200,10 +215,26 @@ const CmdGet = {
             } else if (line.startsWith('[IMAGE]')) {
                 let p = line.replace('[IMAGE]', '').split('||');
                 el = document.createElement('div');
+
                 let mode = p[2] ? p[2].trim().toLowerCase() : "right";
+                // Четвертый параметр — масштаб. Если его нет, ставим 1.
+                let scale = p[3] ? parseFloat(p[3].trim()) : 1;
+
                 el.className = `scp-image-container ${mode}-mode visible`;
-                // ДИНАМИЧЕСКИЙ ПУТЬ ДО КАРТИНКИ РАБОТАЕТ!
-                el.innerHTML = `<img src="${currentDossierPath}images/${p[0].trim()}"><div class="scp-image-caption">${p[1] || ""}</div>`;
+
+                // Передаем масштаб в CSS через переменную
+                if (!isNaN(scale)) {
+                    el.style.setProperty('--img-scale', scale);
+                }
+
+                let imageName = p[0].trim();
+                let imageSrc = `${currentDossierPath}images/${imageName}`;
+
+                if (localImageMap && localImageMap[imageName]) {
+                    imageSrc = localImageMap[imageName];
+                }
+
+                el.innerHTML = `<img src="${imageSrc}"><div class="scp-image-caption">${p[1] || ""}</div>`;
             } else if (line.startsWith('[TABLE6]')) {
                 let wrapper = document.createElement('div');
                 wrapper.className = 'table-wrapper visible';
@@ -231,36 +262,78 @@ const CmdGet = {
                     currentTable.appendChild(tr);
                     continue;
                 } else {
-                    // --- ДОБАВЛЕНА ПОДДЕРЖКА ЗАГОЛОВКОВ H1-H6 ---
-                    const headerMatch = line.match(/^\[H([1-6])\]/i);
+                    // --- НАЧАЛО ПОДДЕРЖКИ MARKDOWN ---
+                    let isListItem = false;
+                    const listMatch = line.match(/^(\-|\*)\s+(.*)/);
+                    const mdHeaderMatch = line.match(/^(#{1,6})\s+(.*)/);
 
-                    if (headerMatch) {
-                        const level = headerMatch[1];
-                        el = document.createElement(`h${level}`); // Создает h1, h2, h3...
-                        el.classList.add('scp-header', `scp-h${level}`); // Классы для гибкой настройки в CSS
-                        line = line.replace(headerMatch[0], '').trim(); // Вырезаем тег из текста
+                    if (listMatch) {
+                        isListItem = true;
+                        el = document.createElement('li');
+                        line = listMatch[2]; // Берем только текст, без тире
+                    } else if (line === '---' || line === '***') {
+                        el = document.createElement('hr');
+                        el.className = 'scp-hr';
+                        line = ''; // Пустая строка, чтобы не генерировались квадратики
+                    } else if (mdHeaderMatch) {
+                        const level = mdHeaderMatch[1].length;
+                        el = document.createElement(`h${level}`);
+                        el.classList.add('scp-header', `scp-h${level}`);
+                        line = mdHeaderMatch[2];
                     } else {
-                        el = document.createElement('p'); // Стандартный абзац, если это не заголовок
+                        // Старая логика заголовков [H1]-[H6] (оставляем для совместимости)
+                        const headerMatch = line.match(/^\[H([1-6])\]/i);
+                        if (headerMatch) {
+                            const level = headerMatch[1];
+                            el = document.createElement(`h${level}`);
+                            el.classList.add('scp-header', `scp-h${level}`);
+                            line = line.replace(headerMatch[0], '').trim();
+                        } else {
+                            el = document.createElement('p'); // Обычный абзац
+                        }
                     }
-                    // --------------------------------------------
 
-                    // Проверка на CENTER теперь работает и для абзацев, и для заголовков
-                    if (line.startsWith('[CENTER]')) {
+                    // Проверка на [CENTER]
+                    if (line.includes('[CENTER]')) {
                         el.classList.add('center');
                         line = line.replace('[CENTER]', '').trim();
                     }
 
-                    if (currentQuote) targetContainer = currentQuote;
-                    else if (currentFootnote) targetContainer = currentFootnote;
+                    // --- УПРАВЛЕНИЕ КОНТЕЙНЕРАМИ (Списки внутри цитат и сносок) ---
+                    if (isListItem) {
+                        if (!currentList) {
+                            currentList = document.createElement('ul');
+                            currentList.className = 'scp-list';
 
+                            let parent = output;
+                            if (currentQuote) parent = currentQuote;
+                            else if (currentFootnote) parent = currentFootnote;
+                            parent.appendChild(currentList);
+                        }
+                        targetContainer = currentList; // <li> пойдет внутрь <ul>
+                    } else {
+                        currentList = null; // Закрываем список, если пошел обычный текст
+
+                        if (currentQuote) targetContainer = currentQuote;
+                        else if (currentFootnote) targetContainer = currentFootnote;
+                        else targetContainer = output;
+                    }
+
+                    // --- ЗАМЕНА ИНЛАЙН-ТЕГОВ (Inline Markdown) ---
                     let html = line
                         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                         .replace(/\_(.*?)\_/g, '<em>$1</em>')
+                        .replace(/\~\~(.*?)\~\~/g, '<del>$1</del>') // Зачеркивание ~~текст~~
+                        .replace(/==(.*?)==/g, '<span class="scp-redacted">$1</span>') // Плашка цензуры ==текст==
+                        .replace(/`(.*?)`/g, '<code class="scp-inline-code">$1</code>') // Код `текст`
+                        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="scp-link">$1</a>') // MD Ссылки
                         .replace(/\[color=(#[0-9a-fA-F]{3,6})\](.*?)\[\/color\]/gi, '<span style="color:$1">$2</span>')
                         .replace(/\[bgcolor=(#[0-9a-fA-F]{3,6})\](.*?)\[\/bgcolor\]/gi, '<span style="background-color:$1; padding: 0 4px; border-radius: 2px;">$2</span>')
                         .replace(/\[HREF=(.*?)\](.*?)\[\/HREF\]/gi, '<a href="$1" target="_blank" class="scp-link">$2</a>');
 
                     let temp = document.createElement('div');
+
+                    // ВОТ ЭТА СТРОКА РЕШАЕТ ВСЁ:
                     temp.innerHTML = html;
 
                     const wrapWords = (node) => {
@@ -309,11 +382,9 @@ const CmdGet = {
 
         const endLine = document.createElement("div");
         endLine.classList.add("doc-line");
-
-        const textSpan = document.createElement("span");
+        const textSpan_End = document.createElement("span");
         textSpan.textContent = "[КОНЕЦ ДОКУМЕНТА]";
-
-        endLine.appendChild(textSpan);
+        endLine.appendChild(textSpan_end);
         output.appendChild(endLine);
 
         output.scrollTop = output.scrollHeight;
