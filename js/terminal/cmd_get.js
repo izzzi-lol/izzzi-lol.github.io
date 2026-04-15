@@ -59,7 +59,10 @@ const CmdGet = {
                     const content = await docResponse.text();
                     terminal.printSystem(`ДОКУМЕНТ ПО ID НАЙДЕН.`);
                     await new Promise(r => setTimeout(r, 20));
-                    await this.renderStepByStep(content, terminal.output);
+
+                    // ИСПРАВЛЕНО: используем outputContainer и передаем query!
+                    await this.renderStepByStep(content, outputContainer, query);
+
                     return; // Сразу выходим, если нашли по ID
                 }
             }
