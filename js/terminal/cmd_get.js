@@ -52,16 +52,20 @@ const CmdGet = {
 
             let matches = [];
 
-            // 1. ПРОВЕРКА НА ТОЧНЫЙ ID (Твой запрос)
-            if (folderIds.includes(query)) {
-                const docResponse = await fetch(`dossiers/${query}/dossier.txt`);
+	    // 1. ПРОВЕРКА НА ТОЧНЫЙ ID (Игнорируем регистр)
+            // Ищем в массиве папок ту, чье имя в нижнем регистре совпадает с нашим запросом
+            const exactMatchId = folderIds.find(id => id.toLowerCase() === query);
+
+            if (exactMatchId) {
+                // Используем exactMatchId, чтобы сохранить правильный регистр папки для URL
+                const docResponse = await fetch(`${DOSSIERS_ROOT}/${exactMatchId}/dossier.txt`);
                 if (docResponse.ok) {
                     const content = await docResponse.text();
                     terminal.printSystem(`ДОКУМЕНТ ПО ID НАЙДЕН.`);
                     await new Promise(r => setTimeout(r, 20));
 
-                    // ИСПРАВЛЕНО: используем outputContainer и передаем query!
-                    await this.renderStepByStep(content, outputContainer, query);
+                    // ИСПРАВЛЕНО: передаем exactMatchId вместо query
+                    await this.renderStepByStep(content, outputContainer, exactMatchId);
 
                     return; // Сразу выходим, если нашли по ID
                 }
