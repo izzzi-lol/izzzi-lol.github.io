@@ -420,3 +420,27 @@ body.locked {
         border: 1px solid #333;
     }
 }
+
+/* Кнопка запроса действий у оператора */
+.operator-action-btn {
+    color: var(--terminal-green);
+    border: 1px dashed var(--terminal-green);
+    padding: 12px;
+    margin: 15px 0;
+    text-align: center;
+    cursor: pointer;
+    font-weight: bold;
+    font-family: var(--mono-font);
+    background: rgba(0, 255, 65, 0.05);
+    animation: pulse-border 2s infinite;
+}
+
+.operator-action-btn:hover, .operator-action-btn:active {
+    background: rgba(0, 255, 65, 0.15);
+}
+
+@keyframes pulse-border {
+    0% { border-color: var(--terminal-green); opacity: 1; }
+    50% { border-color: transparent; opacity: 0.6; }
+    100% { border-color: var(--terminal-green); opacity: 1; }
+}

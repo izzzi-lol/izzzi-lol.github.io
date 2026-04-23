@@ -40,7 +40,6 @@ const CmdUpload = {
                 // 3. Проверяем, всё ли на месте
                 if (!this.dossierContent) {
                     terminal.printError("КРИТИЧЕСКАЯ ОШИБКА: Файл конфигурации (.txt) не найден.");
-                    terminal.unlockInput();
                     return;
                 }
 
@@ -50,10 +49,22 @@ const CmdUpload = {
                     terminal.printError(`НЕДОСТАТОЧНО ФАЙЛОВ!`);
                     terminal.printSystem(`Для корректного отображения догрузите: ${missing.join(', ')}`);
 
-                    // Небольшая задержка перед повторным открытием окна для эффекта
-                    setTimeout(() => {
-                        this.promptForFiles(terminal);
-                    }, 2000);
+                    const actionBtn = document.createElement('div');
+                    actionBtn.className = 'operator-action-btn';
+                    actionBtn.innerHTML = `> ОЖИДАНИЕ ДЕЙСТВИЯ ОПЕРАТОРА: НАЖМИТЕ ДЛЯ ДОЗАГРУЗКИ ФАЙЛОВ <`;
+                    
+                    actionBtn.onclick = () => {
+                        actionBtn.remove(); 
+                        this.promptForFiles(terminal); 
+                    };
+
+                    const outNode = document.getElementById('dossier-output') || terminal.output || document.body;
+                    outNode.appendChild(actionBtn);
+                    
+                    if (outNode.scrollTop !== undefined) {
+                        outNode.scrollTop = outNode.scrollHeight;
+                    }
+
                 } else {
                     // Всё готово — запускаем рендер
                     this.startRendering(terminal);
