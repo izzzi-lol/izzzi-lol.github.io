@@ -282,6 +282,11 @@ const CmdGet = {
                         el = document.createElement('hr');
                         el.className = 'scp-hr';
                         line = ''; // Пустая строка, чтобы не генерировались квадратики
+                    } else if (line === '.') {
+                        el = document.createElement('div');
+                        el.style.height = '1.5em'; // Высота пустого отступа (примерно равна одному абзацу)
+                        line = ''; // Очищаем строку, чтобы сама точка не вывелась на экран
+                    // ---------------------------------
                     } else if (mdHeaderMatch) {
                         const level = mdHeaderMatch[1].length;
                         el = document.createElement(`h${level}`);
