@@ -2,7 +2,7 @@ const GITHUB_USER = "izzzi-lol"; // Например, izzzi-lol
 const GITHUB_REPO = "izzzi-lol.github.io"; // Например, scp-terminal
 const DOSSIERS_ROOT = "dossiers";
 
-const GITHUB_TOKEN = "Z2l0aHViX3BhdF8xMUJPUUNJN1kwZEZXYm16dlV4VEVOX0NPMDZDWjJGVEJOMTJqRHlSVWxObndIc3JxeXM1dVVHOUdCRlU2eEJUMWVORU5HVDJMTk16YTdpcVVE"; // Например: github_pat_11ABCDE...
+const GITHUB_TOKEN = "WjJsMGFIVmlYM0JoZEY4eE1VSlBVVU5KTjFrd2NtZHBSbkJIVEVKNFJtd3dYMUIwWjFJNVprdzBOR0ZzZVcxS1dGbGFNMWhTWmxGVVRuVlJkRkZ3V0c1c01WRTBTbFV6ZDJkaGRFaFhWbEZDUkRSUFJHMXVVWFZoYkdseg=="; // Например: github_pat_11ABCDE...
 
 const CmdGet = {
     recentMatches: [],
@@ -10,7 +10,7 @@ const CmdGet = {
     // --- ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: общие заголовки для всех запросов к API ---
     _apiHeaders() {
         return {
-            'Authorization': `Bearer ${atob(GITHUB_TOKEN)}`,
+            'Authorization': `Bearer ${atob(atob(GITHUB_TOKEN))}`,
             'Accept': 'application/vnd.github+json',
             'X-GitHub-Api-Version': '2022-11-28'
         };
