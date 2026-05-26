@@ -1,25 +1,75 @@
-// НАСТРОЙКИ РЕПОЗИТОРИЯ (Впиши свои данные!)
 const GITHUB_USER = "izzzi-lol"; // Например, izzzi-lol
 const GITHUB_REPO = "izzzi-lol.github.io"; // Например, scp-terminal
 const DOSSIERS_ROOT = "dossiers";
 
+const GITHUB_TOKEN = "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"; // Например: github_pat_11ABCDE...
+
 const CmdGet = {
     recentMatches: [],
 
-    // --- НОВАЯ ФУНКЦИЯ ДЛЯ РАБОТЫ С GITHUB API ---
+    // --- ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: общие заголовки для всех запросов к API ---
+    _apiHeaders() {
+        return {
+            'Authorization': `Bearer ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+        };
+    },
+
+    // --- ФУНКЦИЯ ДЛЯ РАБОТЫ С GITHUB API (с токеном + кэшем) ---
     async fetchAvailableFolders(terminal) {
+        const CACHE_KEY = 'dossier_folders_cache';
+        const CACHE_TTL = 5 * 60 * 1000; // 5 минут
+
+        // Проверяем кэш — чтобы не тратить запросы при быстрых повторных поисках
+        try {
+            const cached = sessionStorage.getItem(CACHE_KEY);
+            if (cached) {
+                const { folders, timestamp } = JSON.parse(cached);
+                if (Date.now() - timestamp < CACHE_TTL) {
+                    return folders;
+                }
+            }
+        } catch (_) {}
+
         const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${DOSSIERS_ROOT}`;
         try {
-            const response = await fetch(url);
-            if (!response.ok) return [];
+            const response = await fetch(url, { headers: this._apiHeaders() });
+
+            // Показываем оставшийся лимит запросов в консоли (для отладки)
+            const remaining = response.headers.get('X-RateLimit-Remaining');
+            const resetTs    = response.headers.get('X-RateLimit-Reset');
+            if (remaining !== null) {
+                const resetDate = new Date(resetTs * 1000).toLocaleTimeString();
+                console.log(`[GitHub API] Лимит: осталось ${remaining} запросов, сброс в ${resetDate}`);
+            }
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    terminal.printError("ОШИБКА API: Токен недействителен или не указан.");
+                } else if (response.status === 403) {
+                    terminal.printError("ОШИБКА API: Превышен лимит запросов. Попробуйте позже.");
+                } else if (response.status === 404) {
+                    terminal.printError("ОШИБКА API: Репозиторий или папка не найдены. Проверь GITHUB_USER/GITHUB_REPO/DOSSIERS_ROOT.");
+                }
+                return [];
+            }
+
             const data = await response.json();
 
             // Нас интересуют только папки (директории), их имена — это ID досье
-            return data
+            const folders = data
                 .filter(item => item.type === 'dir')
                 .map(item => item.name);
+
+            // Сохраняем в кэш
+            try {
+                sessionStorage.setItem(CACHE_KEY, JSON.stringify({ folders, timestamp: Date.now() }));
+            } catch (_) {}
+
+            return folders;
         } catch (e) {
-            terminal.printError("Ошибка баз данных:", e);
+            terminal.printError("Ошибка базы данных:", e);
             return [];
         }
     },

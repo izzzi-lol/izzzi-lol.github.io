@@ -1,0 +1,13 @@
+[COLORCODES] Mainpage=#4285B4; Quotes=#3E5F8A; Tables=#AFEEEE
+[TITLE] "UNKNOWN"
+
+[IMAGE] test.jpg || Половая связь
+
+[TABLE6]
+Характеристика || Описание
+Тест || Хуй
+[/TABLE6]
+
+[QUOTE]
+Я ебал всё
+[/QUOTE]
