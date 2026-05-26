@@ -1,11 +1,27 @@
 [COLORCODES] Mainpage=#4285B4; Quotes=#3E5F8A; Tables=#AFEEEE
-[TITLE] "UNKNOWN"
+[TITLE] Тэцуро Хаято
 
-[IMAGE] test.jpg || Половая связь
-
+[IMAGE] tetsuro_image.jpg || Художественная визуализация Тэцуро Хаято || right || 1
+[H2] [CENTER] Личные данные
 [TABLE6]
 Характеристика || Описание
-Тест || Хуй
+Имя || Тэцуро [COLOR=#808080](Tetsuro/哲郎)[/COLOR]
+Фамилия || Хаято [COLOR=#808080](Hayato/隼人)[/COLOR]
+Возраст || 36 [COLOR=#808080](07.01.1990)[/COLOR]
+Место рождения || *[REDACTED]*, Япония
+Знак зодиака || Козерог  [COLOR=#000080](♑)[/COLOR]
+Рост || 187 см
+Вес || 78 кг
+[/TABLE6]
+
+[H2] [CENTER] Профиль
+[TABLE6]
+Характеристика || Описание
+ID || 1488-Gamma-Tetsuro
+Должность || [COLOR=#AAAA00]Инженер[/COLOR]
+Специализация || Системы комплекса и узлов связи
+Лояльность || [COLOR=#0055ff]Фонд SCP[/COLOR]
+Статус || [COLOR=#00FF00]Активно ведёт деятельность в фонде[/COLOR]
 [/TABLE6]
 
 [QUOTE]

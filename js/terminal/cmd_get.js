@@ -2,7 +2,7 @@ const GITHUB_USER = "izzzi-lol"; // Например, izzzi-lol
 const GITHUB_REPO = "izzzi-lol.github.io"; // Например, scp-terminal
 const DOSSIERS_ROOT = "dossiers";
 
-const GITHUB_TOKEN = "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"; // Например: github_pat_11ABCDE...
+const GITHUB_TOKEN = "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"; // Например: github_pat_11ABCDE...
 
 const CmdGet = {
     recentMatches: [],
