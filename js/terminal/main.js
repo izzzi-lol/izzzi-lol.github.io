@@ -66,6 +66,7 @@ async function showSplash() {
         document.getElementById(id).classList.remove('show');
     });
     sub.classList.remove('show');
+    await handleUrlParams();
 }
 
 // --- ЛОГИКА АВТОРИЗАЦИИ ---
@@ -166,20 +167,18 @@ async function startAuth() {
     authOverlay.style.display = 'none';
 
     document.body.classList.remove('locked');
-    localStorage.setItem('last_session', Date.now());
+    localStorage.setItem('has_seen_intro', 'true');
     input.focus();
-    await handleUrlParams();
 }
 
 window.onload = async () => {
-    const last = localStorage.getItem('last_session');
-    if (!last || (Date.now() - last > 300000)) { // 5 минут
+    let hasSeenIntro = localStorage.getItem('has_seen_intro');
+    if (!hasSeenIntro || (hasSeenIntro === 'false')) { // 5 минут
         document.body.classList.add('locked');
         startAuth();
     } else {
         authOverlay.style.display = 'none';
         document.body.classList.remove('locked');
-        localStorage.setItem('last_session', Date.now());
         input.focus();
         await handleUrlParams();
     }

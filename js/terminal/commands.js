@@ -21,7 +21,7 @@ const CommandHandler = {
                 break;
             case 'reboot':
                 terminal.printSystem("ПЕРЕЗАГРУЗКА СИСТЕМЫ...");
-                localStorage.clear();
+                localStorage.setItem('has_seen_intro', 'false');
                 setTimeout(() => location.reload(), 1500);
                 break;
             case 'upload':
