@@ -225,6 +225,124 @@ const CmdGet = {
         startLine.appendChild(textSpan);
         output.appendChild(startLine);
 
+        // --- ИНЛАЙН-ПАРСЕР: Markdown + кастомные теги ---
+        // Вынесен перед циклом, чтобы использоваться и в ячейках таблицы, и в абзацах.
+        //
+        // Алгоритм: разбиваем строку на «защищённые» куски (кастомные теги — HREF, CMD,
+        // color, bgcolor, MD-ссылки) и «свободные» куски. К защищённым применяем только
+        // конвертацию тега в HTML; к свободным — Markdown. Так паттерны вроде **...** или
+        // _..._ никогда не сработают внутри атрибутов или содержимого кастомных тегов.
+        const applyInlineMarkdown = (text) => {
+            // Порядок важен: CMD раньше HREF, длинные паттерны раньше коротких
+            const protectedRe = new RegExp(
+                '(' +
+                [
+                    '\\[CMD="[^"]*"\\]\\[.*?\\]\\[\\/CMD\\]',               // [CMD="..."][...][/CMD]
+                    '\\[HREF=[^\\]]*\\].*?\\[\\/HREF\\]',                   // [HREF=...][/HREF]
+                    '\\[color=#[0-9a-fA-F]{3,6}\\].*?\\[\\/color\\]',      // [color=...][/color]
+                    '\\[bgcolor=#[0-9a-fA-F]{3,6}\\].*?\\[\\/bgcolor\\]',  // [bgcolor=...][/bgcolor]
+                    '\\[EFFECT=[^\\]]+\\].*?\\[\\/EFFECT\\]',              // [EFFECT=...][/EFFECT]
+                    '\\[[^\\]]+\\]\\([^)]+\\)',                             // [текст](url)
+                ].join('|') +
+                ')',
+                'gi'
+            );
+
+            const parts = [];
+            let last = 0, m;
+            const re = new RegExp(protectedRe.source, 'gi');
+            while ((m = re.exec(text)) !== null) {
+                if (m.index > last) parts.push({ safe: false, s: text.slice(last, m.index) });
+                parts.push({ safe: true, s: m[0] });
+                last = re.lastIndex;
+            }
+            if (last < text.length) parts.push({ safe: false, s: text.slice(last) });
+
+            return parts.map(({ safe, s }) => {
+                if (safe) {
+                    // Защищённый кусок → только конвертация тега в HTML, без Markdown
+                    return s
+                        .replace(/\[color=(#[0-9a-fA-F]{3,6})\](.*?)\[\/color\]/gi, '<span style="color:$1">$2</span>')
+                        .replace(/\[bgcolor=(#[0-9a-fA-F]{3,6})\](.*?)\[\/bgcolor\]/gi, '<span style="background-color:$1; padding: 0 4px; border-radius: 2px;">$2</span>')
+                        .replace(/\[HREF=([^\]]*)\](.*?)\[\/HREF\]/gi, '<a href="$1" target="_blank" class="scp-link">$2</a>')
+                        .replace(/\[CMD="([^"]+)"\](\[.*?\])\[\/CMD\]/gi, (_, cmd, label) =>
+                            `<span class="scp-cmd-link" onclick="TerminalAPI.typeAndExecute('${cmd.replace(/'/g, "\\'")}')">${label}</span>`
+                        )
+                        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="scp-link">$1</a>')
+                        // [EFFECT=GLITCH;INTENSIVE=float] текст [/EFFECT]
+                        .replace(/\[EFFECT=GLITCH;INTENSIVE=([0-9.]+)\](.*?)\[\/EFFECT\]/gi, (_, intensive, innerText) => {
+                            const gi = Math.max(0.01, Math.min(5, parseFloat(intensive) || 0.5));
+
+                            // Инициализируем движок глитча один раз на всю страницу
+                            if (!window._scpGlitchInit) {
+                                window._scpGlitchInit = true;
+
+                                const st = document.createElement('style');
+                                st.textContent = `
+                                    .scp-effect-glitch {
+                                        display: inline-block;
+                                        /* Скорость анимации зависит от интенсивности через CSS-переменную --gi */
+                                        animation: _scpGlitchJitter calc(0.22s / max(var(--gi, 0.5), 0.05)) steps(1) infinite;
+                                    }
+                                    @keyframes _scpGlitchJitter {
+                                        0%,100% { transform: translate(0,0) skewX(0deg);         filter: none; }
+                                        15%     { transform: translate(calc(var(--gi)*-3px),0) skewX(calc(var(--gi)*-2deg)); filter: brightness(1.6) hue-rotate(30deg); }
+                                        30%     { transform: translate(calc(var(--gi)*2px),0);   filter: none; }
+                                        55%     { transform: translate(calc(var(--gi)*-1px),0) skewX(calc(var(--gi)*1.5deg)); }
+                                        70%     { transform: translate(0,0) skewX(0deg);         filter: brightness(0.7); }
+                                        85%     { transform: translate(calc(var(--gi)*1px),0);   filter: none; }
+                                    }
+                                `;
+                                document.head.appendChild(st);
+
+                                // Символы «разрыва» — ASCII + псевдографика
+                                const GLITCH_CHARS = '!@#$%^&*<>?/|~±░▒▓│┼╬═║╝╔▄▀■□▪';
+
+                                // Скрамблинг символов — стартует после первоначального рендера
+                                setTimeout(function loop() {
+                                    document.querySelectorAll('.scp-effect-glitch').forEach(el => {
+                                        const elGi  = parseFloat(el.dataset.gi)   || 0.5;
+                                        const orig  = el.dataset.orig;
+                                        if (!orig) return;
+                                        // Вероятность замены каждого символа пропорциональна интенсивности
+                                        let out = '';
+                                        for (let i = 0; i < orig.length; i++) {
+                                            out += (orig[i] > ' ' && Math.random() < elGi * 0.18)
+                                                ? GLITCH_CHARS[Math.random() * GLITCH_CHARS.length | 0]
+                                                : orig[i];
+                                        }
+                                        el.textContent = out;
+                                    });
+                                    // Интервал тоже зависит от интенсивности: чем выше — тем чаще
+                                    const maxGi = Math.max(...[...document.querySelectorAll('.scp-effect-glitch')]
+                                        .map(el => parseFloat(el.dataset.gi) || 0.5), 0.5);
+                                    setTimeout(loop, Math.max(40, 180 / maxGi + Math.random() * 100));
+                                }, 600); // ждём, пока отыграет анимация появления слов
+                            }
+
+                            // Экранируем текст для data-атрибута
+                            const safeOrig = innerText
+                                .replace(/&/g, '&amp;')
+                                .replace(/"/g, '&quot;')
+                                .replace(/</g, '&lt;')
+                                .replace(/>/g, '&gt;');
+
+                            return `<span class="scp-effect-glitch" data-gi="${gi}" data-orig="${safeOrig}" style="--gi:${gi}">${innerText}</span>`;
+                        });
+                }
+                // Свободный кусок → Markdown
+                // Порядок: *** до ** до *, чтобы длинные паттерны не «съедались» короткими
+                return s
+                    .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>') // ***жирный курсив***
+                    .replace(/\*\*(.*?)\*\*/g,     '<strong>$1</strong>')           // **жирный**
+                    .replace(/\*(.*?)\*/g,          '<em>$1</em>')                  // *курсив*
+                    .replace(/_(.*?)_/g,            '<em>$1</em>')                  // _курсив_
+                    .replace(/~~(.*?)~~/g,          '<del>$1</del>')                // ~~зачёркнутый~~
+                    .replace(/==(.*?)==/g,          '<span class="scp-redacted">$1</span>') // ==цензура==
+                    .replace(/`(.*?)`/g,            '<code class="scp-inline-code">$1</code>'); // `код`
+            }).join('');
+        };
+
         for (let line of lines) {
             line = line.trim();
             if (!line) continue;
@@ -311,9 +429,7 @@ const CmdGet = {
                     let tr = document.createElement('tr');
                     line.split('||').forEach(c => {
                         let td = document.createElement('td');
-                        td.innerHTML = c.trim()
-                            .replace(/\[color=(#[0-9a-fA-F]{3,6})\](.*?)\[\/color\]/gi, '<span style="color:$1">$2</span>')
-                            .replace(/\[bgcolor=(#[0-9a-fA-F]{3,6})\](.*?)\[\/bgcolor\]/gi, '<span style="background-color:$1; padding: 0 4px; border-radius: 2px;">$2</span>');
+                        td.innerHTML = applyInlineMarkdown(c.trim());
                         tr.appendChild(td);
                     });
                     currentTable.appendChild(tr);
@@ -382,20 +498,7 @@ const CmdGet = {
                     }
 
                     // --- ЗАМЕНА ИНЛАЙН-ТЕГОВ (Inline Markdown) ---
-                    let html = line
-                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                        .replace(/\_(.*?)\_/g, '<em>$1</em>')
-                        .replace(/\~\~(.*?)\~\~/g, '<del>$1</del>') // Зачеркивание ~~текст~~
-                        .replace(/==(.*?)==/g, '<span class="scp-redacted">$1</span>') // Плашка цензуры ==текст==
-                        .replace(/`(.*?)`/g, '<code class="scp-inline-code">$1</code>') // Код `текст`
-                        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="scp-link">$1</a>') // MD Ссылки
-                        .replace(/\[color=(#[0-9a-fA-F]{3,6})\](.*?)\[\/color\]/gi, '<span style="color:$1">$2</span>')
-                        .replace(/\[bgcolor=(#[0-9a-fA-F]{3,6})\](.*?)\[\/bgcolor\]/gi, '<span style="background-color:$1; padding: 0 4px; border-radius: 2px;">$2</span>')
-                        .replace(/\[HREF=(.*?)\](.*?)\[\/HREF\]/gi, '<a href="$1" target="_blank" class="scp-link">$2</a>')
-                        // [CMD="команда"][МЕТКА][/CMD] — кликабельная ссылка с анимацией ввода
-                        .replace(/\[CMD="([^"]+)"\](\[.*?\])\[\/CMD\]/gi, (_, cmd, label) =>
-                            `<span class="scp-cmd-link" onclick="TerminalAPI.typeAndExecute('${cmd.replace(/'/g, "\\'")}')">${label}</span>`
-                        );
+                    let html = applyInlineMarkdown(line);
 
                     let temp = document.createElement('div');
 

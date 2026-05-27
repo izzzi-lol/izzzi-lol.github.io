@@ -91,13 +91,13 @@ async function startAuth() {
     // === ФАЗА 1: Быстрые системные логи ===
     await delay(200);
     const logs = [
-        ["> SCIPNET BOOT SEQUENCE v4.1.9...",        120],
+        ["> SCIPNET BOOT SEQUENCE v4.1.9...",         120],
         ["> LOADING KERNEL MODULES...",               110],
         ["> MEMETIC HAZARD FILTER: ACTIVE",           110],
         ["> CONNECTING TO O5 MAINFRAME...",           130],
         ["> ENCRYPTING CHANNEL [AES-4096]...",        110],
         ["> VERIFYING DIGITAL SIGNATURE...",          100],
-        ["> ANOMALOUS ENTITY SCAN: CLEAR",  100],
+        ["> ANOMALOUS ENTITY SCAN: CLEAR",            100],
         ["> BIOMETRIC AUTHENTICATION REQUIRED.",      160],
     ];
 
