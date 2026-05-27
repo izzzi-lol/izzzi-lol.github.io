@@ -1,10 +1,15 @@
 :root {
     --accent: 28, 37, 56;
-    --head-font: 'IBM Plex Sans', sans-serif;
+    --head-font: 'VT323', monospace;           /* ← CRT заголовки */
     --mono-font: 'JetBrains Mono', monospace;
-    --page-font: 'Inter', sans-serif;
+    --page-font: 'JetBrains Mono', monospace; /* ← весь текст теперь моно */
     --danger-color: #E6283C;
     --terminal-green: #00ff41;
+
+    /* CRT эффекты */
+    --phosphor-glow: 0 0 6px rgba(0, 255, 65, 0.55);
+    --text-glow:     0 0 3px rgba(220, 220, 220, 0.25);
+    --scan-dark:     rgba(0, 0, 0, 0.18);
 
     /* Цвета темы (Мираж по умолчанию) */
     --theme-color: #a200ff;
@@ -32,49 +37,134 @@ body {
 #container {
     width: 100vw;
     height: 100dvh;
-    background: #111; /* Фон самого терминала */
+    background: #080808;
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
     position: relative;
-    z-index: 1; /* Создаем контекст наложения */
+    z-index: 1;
     overflow: hidden;
+    /* Лёгкое мерцание CRT */
+    animation: crtFlicker 10s infinite;
+}
+
+@keyframes crtFlicker {
+    0%,  18%, 20%, 22%, 52%, 54%, 65%, 100% { opacity: 1; }
+    19%, 21%                                  { opacity: 0.94; }
+    53%                                       { opacity: 0.96; }
+    66%                                       { opacity: 0.97; }
 }
 
 /* ЛОГОТИП НА ФОНЕ */
 #container::before {
     content: '';
-    position: absolute; /* Абсолютное позиционирование внутри контейнера */
+    position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-
-    /* Путь: ../ если CSS в папке css. Если CSS в корне, убери ../ */
     background-image: url("../images/scp_logo.png");
-
     background-repeat: no-repeat;
     background-position: center;
-    background-size: 50vh; /* Размер логотипа (50% от высоты экрана) */
-
-    opacity: 0.05; /* Делаем логотип очень бледным, чтобы текст читался */
-    z-index: -1;   /* Теперь он будет МЕЖДУ черным фоном и текстом */
-    pointer-events: none; /* Чтобы по логотипу нельзя было случайно кликнуть */
+    background-size: 50vh;
+    opacity: 0.04;
+    z-index: -1;
+    pointer-events: none;
     filter: grayscale(100%) brightness(50%);
 }
 
-/* 3. КОНСОЛЬ */
-#console-area {
-    font-family: var(--mono-font);
-    background: #000;
-    padding: calc(15px + env(safe-area-inset-top)) 20px 15px 20px; 
-    border-bottom: 1px solid #333;
-    border-left: 4px solid var(--terminal-green);
-    display: flex;
-    align-items: center;
-    z-index: 10;
-    flex-shrink: 0;
+/* === CRT ОВЕРЛЕЙ (scanlines + vignette) === */
+#crt-fx {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9998; /* под auth-overlay (9999), над всем остальным */
 }
 
-.prompt { color: var(--terminal-green); font-weight: bold; margin-right: 10px; }
-#cmd-input { background: transparent; border: none; color: #fff; font-family: var(--mono-font); font-size: 16px; flex: 1; outline: none; }
+/* Горизонтальные scanlines */
+#crt-scanlines {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 2px,
+        var(--scan-dark) 2px,
+        var(--scan-dark) 4px
+    );
+    mix-blend-mode: multiply;
+}
+
+/* Виньетка по краям */
+#crt-vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+        ellipse 88% 82% at 50% 50%,
+        transparent 45%,
+        rgba(0, 0, 0, 0.55) 100%
+    );
+}
+
+/* 3. КОНСОЛЬ — РЕДИЗАЙН */
+#console-area {
+    font-family: var(--mono-font);
+    background: #020202;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.18);
+    border-left: none; /* убираем старую полосу */
+    box-shadow: 0 2px 24px rgba(0, 255, 65, 0.06), inset 0 -1px 0 rgba(0,255,65,0.08);
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+    flex-shrink: 0;
+    padding: 0;
+    position: relative;
+}
+
+/* Верхняя мета-полоска */
+#console-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: calc(6px + env(safe-area-inset-top)) 20px 5px 20px;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.07);
+    font-size: 0.6em;
+    letter-spacing: 1.5px;
+    color: rgba(0, 255, 65, 0.4);
+}
+
+.meta-tag {
+    background: rgba(0, 255, 65, 0.07);
+    border: 1px solid rgba(0, 255, 65, 0.15);
+    padding: 1px 7px;
+    border-radius: 2px;
+}
+
+.meta-spacer { flex: 1; }
+
+.meta-clock {
+    color: rgba(0, 255, 65, 0.55);
+    letter-spacing: 2px;
+}
+
+/* Строка ввода */
+#console-input-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 20px 12px 20px;
+}
+
+/* Свечение на cursor */
+#cmd-input {
+    caret-color: var(--terminal-green);
+    text-shadow: var(--text-glow);
+}
+
+/* Prompt с phosphor glow */
+.prompt {
+    color: var(--terminal-green);
+    font-weight: bold;
+    margin-right: 10px;
+    text-shadow: var(--phosphor-glow);
+    white-space: nowrap;
+}
 
 /* 4. ОБЛАСТЬ ВЫВОДА */
 #dossier-output {
@@ -82,8 +172,23 @@ body {
     overflow-y: auto;
     padding: 20px 40px;
     box-sizing: border-box;
-    line-height: 1.6;
+    line-height: 1.7;
     scroll-behavior: smooth;
+    /* Лёгкий phosphor тint */
+    background: linear-gradient(180deg, rgba(0,255,65,0.012) 0%, transparent 120px);
+}
+
+/* Лёгкое свечение на тексте вывода */
+#dossier-output p,
+#dossier-output li,
+#dossier-output td {
+    text-shadow: var(--text-glow);
+}
+
+/* Зелёный системный текст — сильнее светится */
+#dossier-output div[style*="terminal-green"],
+#dossier-output div[style*="--terminal-green"] {
+    text-shadow: var(--phosphor-glow);
 }
 
 /* 5. КОНТЕНТ И ОБТЕКАНИЕ */
@@ -320,40 +425,194 @@ blockquote {
 /* .word.decrypting { background: var(--theme-color); } */
 /* --- ЭКРАН АВТОРИЗАЦИИ (FULLSCREEN) --- */
 #auth-overlay {
-    position: fixed;      
-    top: 0;
-    left: 0;
-    width: 100vw;         
-    height: 100vh;        
-    height: 100dvh;       
-    background-color: #000; 
-    display: none;        /* Управляется через JS (flex) */
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    background-color: #000;
+    display: none; /* JS управляет через flex */
     flex-direction: column;
-    justify-content: center; 
-    align-items: center;     
-    z-index: 9999;        
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
     font-family: var(--mono-font);
-    transition: opacity 0.8s ease; 
+    transition: opacity 0.8s ease;
+    background-image:
+        linear-gradient(rgba(0,255,65,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,65,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
 }
 
-/* Блокировка прокрутки основного контента, пока висит заставка */
-body.locked {
+/* Блокировка прокрутки */
+body.locked { overflow: hidden; }
+
+/* Обёртка */
+#auth-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    width: 90%;
+    max-width: 520px;
+    opacity: 0;
+    animation: authFadeIn 0.4s ease forwards 0.1s;
+}
+
+@keyframes authFadeIn { to { opacity: 1; } }
+
+/* === ЗАГОЛОВОК === */
+#auth-header {
+    text-align: center;
+    border-bottom: 1px solid rgba(0,255,65,0.2);
+    padding-bottom: 16px;
+    width: 100%;
+}
+
+#auth-sigil {
+    color: var(--terminal-green);
+    font-size: 2.2em;
+    line-height: 1;
+    margin-bottom: 8px;
+    animation: sigilPulse 2s ease-in-out infinite;
+    display: block;
+}
+
+@keyframes sigilPulse {
+    0%, 100% { opacity: 1; text-shadow: 0 0 10px var(--terminal-green), 0 0 30px var(--terminal-green); }
+    50%       { opacity: 0.5; text-shadow: none; }
+}
+
+#auth-title {
+    color: var(--terminal-green);
+    font-size: 1em;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    text-shadow: 0 0 8px rgba(0,255,65,0.6);
+}
+
+#auth-subtitle {
+    color: #555;
+    font-size: 0.65em;
+    letter-spacing: 2px;
+    margin-top: 4px;
+}
+
+/* === ЛОГ === */
+#auth-terminal {
+    width: 100%;
+    min-height: 110px;
+    color: var(--terminal-green);
+    font-size: 0.78em;
+    line-height: 1.6;
+    text-shadow: 0 0 4px rgba(0,255,65,0.4);
     overflow: hidden;
 }
 
-/* Стили для логов внутри заставки */
-#auth-terminal {
-    color: var(--terminal-green);
-    font-size: 0.9em;
-    line-height: 1.4;
-    text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+#auth-terminal .log-line {
+    opacity: 0;
+    transform: translateX(-6px);
+    animation: logAppear 0.2s ease forwards;
 }
 
-/* Стили для сканера */
-.auth-scanner {
-    border-color: var(--terminal-green) !important;
+@keyframes logAppear { to { opacity: 1; transform: translateX(0); } }
+
+/* === ПРОГРЕСС-БАР === */
+#auth-progress-wrap {
+    width: 100%;
+    display: none; /* показывается через JS */
+    flex-direction: column;
+    gap: 6px;
+}
+
+#auth-progress-track {
+    width: 100%;
+    height: 3px;
+    background: rgba(0,255,65,0.1);
+    border: 1px solid rgba(0,255,65,0.2);
+    overflow: hidden;
+}
+
+#auth-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: var(--terminal-green);
+    box-shadow: 0 0 8px var(--terminal-green);
+    transition: width 0.08s linear;
+}
+
+#auth-progress-label {
+    font-size: 0.65em;
+    color: #555;
+    letter-spacing: 2px;
+    text-align: right;
+}
+
+/* === СКАНЕР === */
+#auth-scanner {
+    width: 180px;
+    height: 90px;
+    position: relative;
+    display: none; /* показывается через JS */
+    align-items: center;
+    justify-content: center;
+    margin: 4px 0;
+}
+
+.scan-corner {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-color: var(--terminal-green);
+    border-style: solid;
+    box-shadow: 0 0 6px var(--terminal-green);
+}
+.scan-corner.tl { top: 0; left: 0;  border-width: 2px 0 0 2px; }
+.scan-corner.tr { top: 0; right: 0; border-width: 2px 2px 0 0; }
+.scan-corner.bl { bottom: 0; left: 0;  border-width: 0 0 2px 2px; }
+.scan-corner.br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+
+#scan-sweep {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--terminal-green), transparent);
+    box-shadow: 0 0 10px var(--terminal-green), 0 4px 20px rgba(0,255,65,0.3);
+    animation: scanSweep 1.2s ease-in-out infinite;
+}
+
+@keyframes scanSweep {
+    0%   { top: 0%;   opacity: 1; }
+    50%  { top: 100%; opacity: 0.8; }
+    100% { top: 0%;   opacity: 1; }
+}
+
+#scan-label {
+    color: rgba(0,255,65,0.5);
+    font-size: 0.6em;
+    letter-spacing: 3px;
+    z-index: 1;
+}
+
+/* === ФИНАЛЬНЫЙ СТАТУС === */
+#auth-final {
+    font-size: 1.1em;
+    letter-spacing: 4px;
+    font-weight: 700;
+    min-height: 1.4em;
+    text-align: center;
+}
+
+#auth-final.granted {
     color: var(--terminal-green);
-    margin-top: 20px;
+    text-shadow: 0 0 10px var(--terminal-green), 0 0 30px var(--terminal-green);
+    animation: flashGrant 0.3s ease 2;
+}
+
+@keyframes flashGrant {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
 }
 
 
@@ -443,4 +702,200 @@ body.locked {
     0% { border-color: var(--terminal-green); opacity: 1; }
     50% { border-color: transparent; opacity: 0.6; }
     100% { border-color: var(--terminal-green); opacity: 1; }
+}
+
+.scp-cmd-link {
+    color: var(--terminal-green);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    font-weight: bold;
+    transition: opacity 0.2s;
+    text-shadow: var(--phosphor-glow);
+}
+.scp-cmd-link:hover {
+    opacity: 0.7;
+}
+
+/* === СТАТУС-БАР === */
+#crt-statusbar {
+    height: 22px;
+    background: #010101;
+    border-top: 1px solid rgba(0, 255, 65, 0.12);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 8px;
+    font-family: var(--mono-font);
+    font-size: 0.58em;
+    color: rgba(0, 255, 65, 0.35);
+    letter-spacing: 1px;
+    flex-shrink: 0;
+}
+
+.bar-sep    { color: rgba(0, 255, 65, 0.15); }
+.bar-spacer { flex: 1; }
+
+/* === CRT ЗАГОЛОВКИ — VT323 шрифт === */
+.glitch-title,
+.scp-header,
+.scp-h1, .scp-h2, .scp-h3 {
+    font-family: 'VT323', monospace;
+    letter-spacing: 2px;
+}
+
+.scp-h1 { font-size: 2em;   text-shadow: 0 0 12px var(--theme-color); }
+.scp-h2 { font-size: 1.7em; }
+.scp-h3 { font-size: 1.4em; }
+
+.glitch-title {
+    font-size: 2.5em;
+    text-shadow: 0 0 15px var(--theme-color), 2px 2px 0 rgba(255,0,80,0.3), -2px -2px 0 rgba(0,255,200,0.3);
+}
+
+/* Скроллбар в стиле CRT */
+#dossier-output::-webkit-scrollbar       { width: 4px; }
+#dossier-output::-webkit-scrollbar-track { background: #050505; }
+#dossier-output::-webkit-scrollbar-thumb { background: rgba(0,255,65,0.25); border-radius: 2px; }
+#dossier-output::-webkit-scrollbar-thumb:hover { background: rgba(0,255,65,0.5); }
+/* ============================================
+   SCP SPLASH SCREEN
+   ============================================ */
+#scp-splash {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 9990; /* между auth (9999) и терминалом (1) */
+    display: none; /* JS управляет */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 36px;
+    font-family: var(--mono-font);
+    /* Та же CRT-сетка что и в auth */
+    background-image:
+        linear-gradient(rgba(0,255,65,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,65,0.025) 1px, transparent 1px);
+    background-size: 40px 40px;
+}
+
+/* Обёртка логотипа — позиционирует glow под картинкой */
+#splash-logo-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Размытое свечение под логотипом */
+#splash-logo-glow {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,255,65,0.18) 0%, transparent 70%);
+    filter: blur(20px);
+    opacity: 0;
+    transform: scale(0.5);
+    transition: none;
+}
+
+/* Сам логотип */
+#splash-logo {
+    width: 150px;
+    height: auto;
+    /* Делаем белым с зелёным glow */
+    filter: brightness(0) invert(1) drop-shadow(0 0 12px rgba(0,255,65,0.7));
+    opacity: 0;
+    transform: scale(0.6);
+    position: relative;
+    z-index: 1;
+}
+
+/* === АНИМАЦИЯ ЛОГОТИПА === */
+@keyframes logoAppear {
+    0%   { opacity: 0; transform: scale(0.6); }
+    60%  { opacity: 1; transform: scale(1.06); }
+    80%  { transform: scale(0.98); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes glowAppear {
+    0%   { opacity: 0; transform: scale(0.5); }
+    60%  { opacity: 1; transform: scale(1.1); }
+    100% { opacity: 0.8; transform: scale(1); }
+}
+
+/* Пульсация логотипа пока он виден */
+@keyframes logoPulse {
+    0%, 100% { filter: brightness(0) invert(1) drop-shadow(0 0 12px rgba(0,255,65,0.7)); }
+    50%       { filter: brightness(0) invert(1) drop-shadow(0 0 22px rgba(0,255,65,1)) drop-shadow(0 0 40px rgba(0,255,65,0.4)); }
+}
+
+#splash-logo.animate {
+    animation:
+        logoAppear 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+        logoPulse 2s ease-in-out 0.9s infinite;
+}
+
+#splash-logo-glow.animate {
+    animation: glowAppear 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    opacity: 0.8;
+}
+
+/* === ТЕКСТ "SECURE. CONTAIN. PROTECT." === */
+#splash-tagline {
+    display: flex;
+    gap: 24px;
+    align-items: baseline;
+}
+
+.splash-word {
+    font-family: 'VT323', monospace;
+    font-size: 2.4em;
+    letter-spacing: 5px;
+    color: #fff;
+    opacity: 0;
+    transform: translateY(12px);
+    text-shadow: 0 0 10px rgba(255,255,255,0.3);
+}
+
+@keyframes wordSlideIn {
+    0%   { opacity: 0; transform: translateY(12px); }
+    40%  { opacity: 1; transform: translateY(-3px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Каждое слово чуть ярче предыдущего */
+#sw-secure  { color: #aaa; }
+#sw-contain { color: #ccc; }
+#sw-protect {
+    color: var(--terminal-green);
+    text-shadow: 0 0 15px rgba(0,255,65,0.8), 0 0 30px rgba(0,255,65,0.4);
+    letter-spacing: 6px;
+}
+
+.splash-word.show {
+    animation: wordSlideIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Подпись снизу */
+#splash-sub {
+    font-size: 0.6em;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,0.15);
+    opacity: 0;
+    transition: opacity 0.6s ease;
+}
+
+#splash-sub.show { opacity: 1; }
+
+/* === FADE OUT ВСЕГО СПЛЭША === */
+@keyframes splashFadeOut {
+    0%   { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+#scp-splash.fade-out {
+    animation: splashFadeOut 0.9s ease forwards;
 }

@@ -4,37 +4,116 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TERMINAL O5-COMMAND</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;600;700&family=Inter:wght@400;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;600;700&family=Inter:wght@400;700&family=VT323&display=swap">
     <link rel="stylesheet" type='text/css' media='screen' href="css/terminal.css">
 </head>
 <body class="locked">
 
+<!-- CRT Эффекты: scanlines + vignette поверх всего -->
+<div id="crt-fx" aria-hidden="true">
+    <div id="crt-scanlines"></div>
+    <div id="crt-vignette"></div>
+</div>
+
+<!-- SCP Сплэш-заставка (появляется после авторизации) -->
+<div id="scp-splash" aria-hidden="true">
+    <div id="splash-logo-wrap">
+        <div id="splash-logo-glow"></div>
+        <img id="splash-logo" src="images/scp_logo.png" alt="SCP Foundation">
+    </div>
+    <div id="splash-tagline">
+        <span class="splash-word" id="sw-secure">SECURE.</span>
+        <span class="splash-word" id="sw-contain">CONTAIN.</span>
+        <span class="splash-word" id="sw-protect">PROTECT.</span>
+    </div>
+    <div id="splash-sub">SCP FOUNDATION // ESTABLISHED [REDACTED]</div>
+</div>
+
 <div id="auth-overlay">
-    <div id="auth-terminal" style="width: 80%; max-width: 500px; height: 150px; overflow: hidden; margin-bottom: 20px;"></div>
-    <div class="auth-scanner" style="width: 200px; height: 100px; border: 1px solid #333; position: relative; display: flex; align-items: center; justify-content: center;">
-        <div class="scan-line"></div>
-        <span style="font-size: 0.7em;">RETINA SCAN</span>
+    <div id="auth-wrap">
+        <div id="auth-header">
+            <div id="auth-sigil">⬡</div>
+            <div id="auth-title">SCIPNET // O5-TERMINAL</div>
+            <div id="auth-subtitle">ULTRAVIOLET CLEARANCE ACCESS POINT</div>
+        </div>
+        <div id="auth-terminal"></div>
+        <div id="auth-progress-wrap">
+            <div id="auth-progress-track">
+                <div id="auth-progress-bar"></div>
+            </div>
+            <div id="auth-progress-label">INITIALIZING...</div>
+        </div>
+        <div id="auth-scanner">
+            <div class="scan-corner tl"></div>
+            <div class="scan-corner tr"></div>
+            <div class="scan-corner bl"></div>
+            <div class="scan-corner br"></div>
+            <div id="scan-sweep"></div>
+            <div id="scan-label">RETINA SCAN</div>
+        </div>
+        <div id="auth-final"></div>
     </div>
 </div>
 
 <div id="container">
+
+    <!-- Строка ввода -->
     <div id="console-area">
-        <span class="prompt">O5@SCIPNET:~$</span>
-        <div style="position: relative; flex: 1; display: flex; align-items: center;">
-            <span id="cmd-suggestion" style="position: absolute; left: 0; color: #555; pointer-events: none; font-family: var(--mono-font); font-size: 16px;"></span>
-            <input type="text" id="cmd-input" autocomplete="off" spellcheck="false" autofocus style="position: relative; z-index: 2; background: transparent; width: 100%; border: none; color: #fff; font-family: var(--mono-font); font-size: 16px; outline: none;">
+        <div id="console-meta">
+            <span class="meta-tag">SYS:OK</span>
+            <span class="meta-tag">CONN:SECURE</span>
+            <span class="meta-tag">LVL:O5</span>
+            <span class="meta-spacer"></span>
+            <span class="meta-clock" id="meta-clock">00:00:00</span>
+        </div>
+        <div id="console-input-row">
+            <span class="prompt">O5@SCIPNET:~$</span>
+            <div style="position: relative; flex: 1; display: flex; align-items: center;">
+                <span id="cmd-suggestion" style="position: absolute; left: 0; color: #333; pointer-events: none; font-family: var(--mono-font); font-size: 16px;"></span>
+                <input type="text" id="cmd-input" autocomplete="off" spellcheck="false" autofocus style="position: relative; z-index: 2; background: transparent; width: 100%; border: none; color: #e8e8e8; font-family: var(--mono-font); font-size: 16px; outline: none;">
+            </div>
         </div>
     </div>
 
+    <!-- Область вывода -->
     <div id="dossier-output">
-        <div style="text-align:center; color: #333;">
-        </div>
+        <div style="text-align:center; color: #222;"></div>
     </div>
+
+    <!-- Статус-бар снизу -->
+    <div id="crt-statusbar">
+        <span>SCIPNET v4.1.9</span>
+        <span class="bar-sep">|</span>
+        <span>FOUNDATION SECURE INTRANET</span>
+        <span class="bar-sep">|</span>
+        <span id="bar-status">READY</span>
+        <span class="bar-spacer"></span>
+        <span>MEM: <span id="bar-mem">—</span></span>
+        <span class="bar-sep">|</span>
+        <span>THREAT: <span style="color:var(--terminal-green)">NONE</span></span>
+    </div>
+
 </div>
 
 <script src="js/terminal/cmd_upload.js"></script>
 <script src="js/terminal/cmd_get.js"></script>
 <script src="js/terminal/commands.js"></script>
 <script src="js/terminal/main.js"></script>
+
+<!-- Часики и мем-бар -->
+<script>
+    (function() {
+        function tick() {
+            const el = document.getElementById('meta-clock');
+            if (el) el.textContent = new Date().toLocaleTimeString('en-GB');
+        }
+        tick();
+        setInterval(tick, 1000);
+
+        // Случайная "память" для атмосферы
+        const memEl = document.getElementById('bar-mem');
+        if (memEl) memEl.textContent = (Math.floor(Math.random() * 20) + 78) + '%';
+    })();
+</script>
 </body>
 </html>

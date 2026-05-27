@@ -391,7 +391,11 @@ const CmdGet = {
                         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="scp-link">$1</a>') // MD Ссылки
                         .replace(/\[color=(#[0-9a-fA-F]{3,6})\](.*?)\[\/color\]/gi, '<span style="color:$1">$2</span>')
                         .replace(/\[bgcolor=(#[0-9a-fA-F]{3,6})\](.*?)\[\/bgcolor\]/gi, '<span style="background-color:$1; padding: 0 4px; border-radius: 2px;">$2</span>')
-                        .replace(/\[HREF=(.*?)\](.*?)\[\/HREF\]/gi, '<a href="$1" target="_blank" class="scp-link">$2</a>');
+                        .replace(/\[HREF=(.*?)\](.*?)\[\/HREF\]/gi, '<a href="$1" target="_blank" class="scp-link">$2</a>')
+                        // [CMD="команда"][МЕТКА][/CMD] — кликабельная ссылка с анимацией ввода
+                        .replace(/\[CMD="([^"]+)"\](\[.*?\])\[\/CMD\]/gi, (_, cmd, label) =>
+                            `<span class="scp-cmd-link" onclick="TerminalAPI.typeAndExecute('${cmd.replace(/'/g, "\\'")}')">${label}</span>`
+                        );
 
                     let temp = document.createElement('div');
 
@@ -426,14 +430,9 @@ const CmdGet = {
 
             const words = el.querySelectorAll('.word');
             if (words.length > 0) {
-                let speedWarp = -0.025;
                 for (let w of words) {
-                    w.classList.add('decrypting');
-                    await new Promise(r => setTimeout(r, 30));
-                    w.classList.remove('decrypting');
-                    w.classList.add('revealed');
-                    await new Promise(r => setTimeout(r, 15 - speedWarp));
-                    speedWarp -= speedWarp;
+                    w.classList.add('revealed'); // CSS-анимация сама покажет белый блок → текст
+                    await new Promise(r => setTimeout(r, 38));
                     output.scrollTop = output.scrollHeight;
                 }
             } else {
