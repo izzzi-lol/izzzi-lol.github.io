@@ -1,15 +1,16 @@
 // =============================================================================
 //  cmd_get.js — Команда GET для терминала досье
 //  Загружает список папок через GitHub API, ищет совпадения и рендерит досье.
+//  Рендер делегируется StepRenderer из renderer.js.
 // =============================================================================
 
-const GITHUB_USER   = "izzzi-lol";          // Ваш GitHub username
+const GITHUB_USER   = "izzzi-lol";           // Ваш GitHub username
 const GITHUB_REPO   = "izzzi-lol.github.io"; // Ваш репозиторий
-const DOSSIERS_ROOT = "dossiers";            // Папка с досье в репозитории
+const DOSSIERS_ROOT = "dossiers";             // Папка с досье в репозитории
 
 // Токен хранится в двойном base64 — не идеальная защита, но лучше, чем plaintext.
 // В продакшене лучше проксировать через свой backend.
-const GITHUB_TOKEN = "WjJsMGFIVmlYM0JoZEY4eE1VSlBVVU5KTjFrd2NtZHBSbkJIVEVKNFJtd3dYMUIwWjFJNVprdzBOR0ZzZVcxS1dGbGFNMWhTWmxGVVRuVlJkUkZ3V0c1c01WRTBTbFV6ZDJkaGRFaFhWbEZDUkRSUFJHMXVVWFZoYkdseg==";
+const GITHUB_TOKEN = "WjJsMGFIVmlYM0JoZEY4eE1VSlBVVU5KTjFrd2NtZHBSbkJIVEVKNFJtd3dYMUIwWjFJNVprdzBOR0ZzZVcxS1dGbGFNMWhTWmxGVVRuVlJkUVF3V0c1c01WRTBTbFV6ZDJnaGRFaFhWbEZDUkRSUFJHMXVVWFZoYkdseg==";
 
 const CmdGet = {
     // Кэш последних результатов поиска (для команды GET recent)
@@ -47,9 +48,7 @@ const CmdGet = {
             const cached = sessionStorage.getItem(CACHE_KEY);
             if (cached) {
                 const { folders, timestamp } = JSON.parse(cached);
-                if (Date.now() - timestamp < CACHE_TTL) {
-                    return folders;
-                }
+                if (Date.now() - timestamp < CACHE_TTL) return folders;
             }
         } catch (_) {
             // sessionStorage недоступен — просто игнорируем
@@ -132,7 +131,6 @@ const CmdGet = {
                 return;
             }
 
-            // Получаем контейнер вывода только после проверок
             const outputContainer = TerminalAPI.getOutputNode();
 
             // 2. Проверяем точное совпадение по ID (регистронезависимо)
@@ -157,10 +155,8 @@ const CmdGet = {
                 if (!docResponse.ok) continue;
 
                 const content = await docResponse.text();
-
                 if (!content.toLowerCase().includes(query)) continue;
 
-                // Извлекаем заголовок для превью
                 const titleMatch = content.match(/\[TITLE\](.*)/);
                 const title = titleMatch ? titleMatch[1].trim() : "UNNAMED";
 
@@ -209,22 +205,19 @@ const CmdGet = {
             let preview = "";
 
             if (query) {
-                // Очищаем текст от тегов и ищем контекстный фрагмент
                 const cleanText = m.content.replace(/\[.*?\]/g, ' ').replace(/\s+/g, ' ').trim();
-                const words = cleanText.split(' ');
+                const words     = cleanText.split(' ');
                 const foundIndex = words.findIndex(w => w.toLowerCase().includes(query));
 
                 if (foundIndex !== -1) {
-                    const start   = Math.max(0, foundIndex - 3);
-                    const end     = Math.min(words.length, foundIndex + 4);
+                    const start = Math.max(0, foundIndex - 3);
+                    const end   = Math.min(words.length, foundIndex + 4);
                     preview = `...${words.slice(start, end).join(' ')}...`;
                 }
             }
 
             terminal.printSystem(`[ID: ${m.id}] | ${m.title}`);
-            if (preview) {
-                terminal.printSystem(`  └─ Контекст: "${preview}"`, '#888');
-            }
+            if (preview) terminal.printSystem(`  └─ Контекст: "${preview}"`, '#888');
         }
 
         terminal.printSystem("---------------------------\n");
@@ -232,503 +225,103 @@ const CmdGet = {
     },
 
     // -------------------------------------------------------------------------
-    //  РЕНДЕР ДОСЬЕ (пошаговый, с анимацией)
+    //  РЕНДЕР ДОСЬЕ
+    //  Тонкая обёртка над StepRenderer — вся логика в renderer.js
     // -------------------------------------------------------------------------
 
     /**
-     * Парсит и рендерит содержимое dossier.txt в контейнер вывода.
      * @param {string}  content         Текст файла
      * @param {Element} output          DOM-узел для вывода
      * @param {string}  folderId        ID папки (для путей к изображениям)
      * @param {object}  [localImageMap] Карта имён → data-URL для локальных изображений
      */
     async renderStepByStep(content, output, folderId, localImageMap = {}) {
-        const lines              = content.split('\n');
-        const currentDossierPath = `dossiers/${folderId}/`;
+        this._ensureBannerStyles();
 
-        // Состояние парсера
-        let currentTable   = null;
-        let currentQuote   = null;
-        let currentFootnote = null;
-        let currentList    = null;
+        const renderer = new StepRenderer();
 
-        // Сбрасываем CSS-тему на дефолтную
-        const resetTheme = () => {
-            const def = '#a200ff';
-            document.documentElement.style.setProperty('--theme-color',       def);
-            document.documentElement.style.setProperty('--theme-quote-border', def);
-            document.documentElement.style.setProperty('--theme-quote-bg',    'rgba(162,0,255,0.05)');
-            document.documentElement.style.setProperty('--theme-table-bg',    'rgba(162,0,255,0.2)');
-        };
-        resetTheme();
+        // Баннер пропуска анимации
+        const banner = document.createElement('div');
+        banner.id          = 'echo-interrupt-banner';
+        banner.textContent = 'НАЖМИТЕ ПРОБЕЛ ИЛИ КЛИКНИТЕ ЗДЕСЬ, ЧТОБЫ ПРОПУСТИТЬ АНИМАЦИЮ';
+        banner.addEventListener('click', () => renderer.skip());
 
-        // Глобальное состояние переключателей [DISABLE=...] / [ENABLE=...]
-        const parserState = { disableTags: false, disableMD: false };
-
-        // Маркер начала документа
-        const startLine = document.createElement('div');
-        startLine.classList.add('doc-line');
-        startLine.appendChild(Object.assign(document.createElement('span'), { textContent: '[НАЧАЛО ДОКУМЕНТА]' }));
-        output.appendChild(startLine);
-
-        // -----------------------------------------------------------------
-        //  ИНЛАЙН-ПАРСЕР: Markdown + кастомные теги (с поддержкой вложенности)
-        //
-        //  Архитектура: рекурсивный descent-парсер вместо regex.
-        //  Regex принципиально не умеет считать вложенные пары тегов —
-        //  [COLOR=#A]([COLOR=#B]...[/COLOR])[/COLOR] ломается из-за .*?
-        //  Парсер же ищет «самый ранний» открывающий тег, затем
-        //  findMatchingClose считает глубину и находит правильный [/TAG],
-        //  рекурсивно обрабатывает содержимое и идёт дальше.
-        // -----------------------------------------------------------------
-
-        // 1. Чистый Markdown без обработки тегов
-        const applyMD = (str, state) => {
-            if (state.disableMD) return str;
-            return str
-                .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
-                .replace(/\*\*(.*?)\*\*/g,     '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g,          '<em>$1</em>')
-                .replace(/_(.*?)_/g,            '<em>$1</em>')
-                .replace(/~~(.*?)~~/g,          '<del>$1</del>')
-                .replace(/==(.*?)==/g,          '<span class="scp-redacted">$1</span>')
-                .replace(/`(.*?)`/g,            '<code class="scp-inline-code">$1</code>');
-        };
-
-        // 2. Ищет ЗАКРЫВАЮЩИЙ [/tagName] учитывая вложенность.
-        //    Возвращает индекс закрывающего тега или -1 если не найден.
-        //    fromPos — позиция сразу после открывающего тега.
-        const findMatchingClose = (text, tagName, fromPos) => {
-            const tn       = tagName.toLowerCase();
-            const closeStr = `[/${tn}]`;
-            let depth = 1;
-            let pos   = fromPos;
-
-            while (pos < text.length) {
-                const ltext         = text.toLowerCase();
-                const nextCloseIdx  = ltext.indexOf(closeStr, pos);
-                if (nextCloseIdx === -1) return -1; // Незакрытый тег
-
-                // Ищем следующий открывающий [tagName...] до nextCloseIdx
-                let openIdx = -1;
-                let searchFrom = pos;
-                while (searchFrom < nextCloseIdx) {
-                    const idx = ltext.indexOf(`[${tn}`, searchFrom);
-                    if (idx === -1 || idx >= nextCloseIdx) break;
-                    // Убеждаемся что это [tagName] или [tagName=...], а не [tagNameSomething]
-                    const charAfter = ltext[idx + 1 + tn.length];
-                    if (charAfter === ']' || charAfter === '=') {
-                        openIdx = idx;
-                        break;
-                    }
-                    searchFrom = idx + 1;
-                }
-
-                if (openIdx !== -1) {
-                    // Вложенный открывающий тег — увеличиваем глубину,
-                    // перепрыгиваем за его закрывающую скобку ']'
-                    depth++;
-                    const closeBracket = ltext.indexOf(']', openIdx + 1 + tn.length);
-                    pos = closeBracket !== -1 ? closeBracket + 1 : openIdx + 1 + tn.length + 1;
-                } else {
-                    depth--;
-                    if (depth === 0) return nextCloseIdx;
-                    pos = nextCloseIdx + closeStr.length;
-                }
-            }
-            return -1;
-        };
-
-        // 3. Рендерит глитч-эффект (вынесен, чтобы не дублировать код)
-        const renderGlitch = (intensiveVal, innerText) => {
-            const gi = Math.max(0.01, Math.min(5, intensiveVal || 0.5));
-
-            if (!window._scpGlitchInit) {
-                window._scpGlitchInit = true;
-                const st = document.createElement('style');
-                st.textContent = `
-                    .scp-effect-glitch {
-                        display: inline-block;
-                        animation: _scpGlitchJitter calc(0.22s / max(var(--gi, 0.5), 0.05)) steps(1) infinite;
-                    }
-                    @keyframes _scpGlitchJitter {
-                        0%,100% { transform: translate(0,0) skewX(0deg); filter: none; }
-                        15%     { transform: translate(calc(var(--gi)*-3px),0) skewX(calc(var(--gi)*-2deg)); filter: brightness(1.6) hue-rotate(30deg); }
-                        30%     { transform: translate(calc(var(--gi)*2px),0); filter: none; }
-                        55%     { transform: translate(calc(var(--gi)*-1px),0) skewX(calc(var(--gi)*1.5deg)); }
-                        70%     { transform: translate(0,0) skewX(0deg); filter: brightness(0.7); }
-                        85%     { transform: translate(calc(var(--gi)*1px),0); filter: none; }
-                    }
-                `;
-                document.head.appendChild(st);
-
-                const GLITCH_CHARS = '!@#$%^&*<>?/|~±░▒▓│┼╬═║╝╔▄▀■□▪';
-                (function loop() {
-                    document.querySelectorAll('.scp-effect-glitch').forEach(el => {
-                        const elGi = parseFloat(el.dataset.gi) || 0.5;
-                        const orig = el.dataset.orig;
-                        if (!orig) return;
-                        let out = '';
-                        for (let i = 0; i < orig.length; i++) {
-                            out += (orig[i] > ' ' && Math.random() < elGi * 0.18)
-                                ? GLITCH_CHARS[Math.random() * GLITCH_CHARS.length | 0]
-                                : orig[i];
-                        }
-                        el.textContent = out;
-                    });
-                    const allGi = [...document.querySelectorAll('.scp-effect-glitch')]
-                        .map(el => parseFloat(el.dataset.gi) || 0.5);
-                    const maxGi = allGi.length ? Math.max(...allGi) : 0.5;
-                    setTimeout(loop, Math.max(40, 180 / maxGi + Math.random() * 100));
-                })();
-            }
-
-            const safeOrig = innerText
-                .replace(/&/g, '&amp;')
-                .replace(/"/g, '&quot;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
-            return `<span class="scp-effect-glitch" data-gi="${gi}" data-orig="${safeOrig}" style="--gi:${gi}">${innerText}</span>`;
-        };
-
-        // 4. Превращает распознанный тег + его уже-обработанное содержимое в HTML
-        const renderTag = (name, attr, innerHtml) => {
-            switch (name) {
-                case 'color':
-                    return `<span style="color:${attr}">${innerHtml}</span>`;
-                case 'bgcolor':
-                    return `<span style="background-color:${attr}; padding:0 4px; border-radius:2px;">${innerHtml}</span>`;
-                case 'href':
-                    return `<a href="${attr}" target="_blank" class="scp-link">${innerHtml}</a>`;
-                case 'size':
-                    return `<span style="font-size:${attr};">${innerHtml}</span>`;
-                case 'effect': {
-                    const m = attr.match(/GLITCH;INTENSIVE=([0-9.]+)/i);
-                    return m ? renderGlitch(parseFloat(m[1]), innerHtml) : innerHtml;
-                }
-                default:
-                    return innerHtml;
-            }
-        };
-
-        // 5. Рекурсивный парсер: обходит текст слева направо,
-        //    находит самый ранний тег, обрабатывает его и вызывает себя для хвоста.
-        //
-        //    Поддерживаемые парные теги (все поддерживают вложенность):
-        //      [color=#HEX]...[/color]
-        //      [bgcolor=#HEX]...[/bgcolor]
-        //      [href=URL]...[/href]
-        //      [size=VALUE]...[/size]
-        //      [EFFECT=GLITCH;INTENSIVE=N]...[/EFFECT]
-        //    Отдельная обработка (не вложенный, regex-safe):
-        //      [CMD="cmd"][label][/CMD]
-        const NESTABLE_TAGS = [
-            { name: 'color',   openRe: /\[color=(#[0-9a-fA-F]{3,8})\]/i   },
-            { name: 'bgcolor', openRe: /\[bgcolor=(#[0-9a-fA-F]{3,8})\]/i },
-            { name: 'href',    openRe: /\[href=([^\]]+)\]/i                },
-            { name: 'size',    openRe: /\[size=([0-9a-z.%]+)\]/i           },
-            { name: 'effect',  openRe: /\[effect=([^;\]]+;[^\]]+)\]/i     },
-        ];
-
-        const parseSegment = (text, state) => {
-            // Ищем самый ранний открывающий парный тег
-            let earliest = null;
-            for (const { name, openRe } of NESTABLE_TAGS) {
-                const m = new RegExp(openRe.source, 'i').exec(text);
-                if (m && (earliest === null || m.index < earliest.index)) {
-                    earliest = { index: m.index, full: m[0], name, attr: m[1] };
-                }
-            }
-
-            // Проверяем CMD (не поддерживает вложенность, regex достаточно)
-            const cmdRe = /\[CMD="([^"]+)"\](\[.*?\])\[\/CMD\]/i;
-            const cmdM  = cmdRe.exec(text);
-            const useCMD = cmdM && (earliest === null || cmdM.index < earliest.index);
-
-            // Нет тегов вообще — просто применяем Markdown
-            if (!earliest && !cmdM) return applyMD(text, state);
-
-            if (useCMD) {
-                const before   = text.slice(0, cmdM.index);
-                const after    = text.slice(cmdM.index + cmdM[0].length);
-                const safeCmd  = cmdM[1].replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-                const tagHtml  = `<span class="scp-cmd-link" onclick="TerminalAPI.typeAndExecute('${safeCmd}')">${applyMD(cmdM[2], state)}</span>`;
-                return applyMD(before, state) + tagHtml + parseSegment(after, state);
-            }
-
-            // Парный тег — ищем его закрывающую пару с учётом вложенности
-            const { index, full, name, attr } = earliest;
-            const innerStart = index + full.length;
-            const closeIdx   = findMatchingClose(text, name, innerStart);
-
-            if (closeIdx === -1) {
-                // Незакрытый тег — не обрабатываем, продолжаем за ним
-                return applyMD(text.slice(0, innerStart), state) + parseSegment(text.slice(innerStart), state);
-            }
-
-            const before    = text.slice(0, index);
-            const inner     = text.slice(innerStart, closeIdx);
-            const after     = text.slice(closeIdx + `[/${name}]`.length);
-
-            // Рекурсивно обрабатываем содержимое, затем рендерим тег
-            const innerHtml = parseSegment(inner, state);
-            const tagHtml   = renderTag(name, attr, innerHtml);
-
-            return applyMD(before, state) + tagHtml + parseSegment(after, state);
-        };
-
-        // 6. Точка входа: сначала обрабатывает управляющие переключатели
-        //    [DISABLE=TAGS/MD] / [ENABLE=TAGS/MD], затем для каждого токена
-        //    вызывает parseSegment или applyMD в зависимости от флагов.
-        const applyInlineMarkdown = (text, state) => {
-            const controlRe = /(\[DISABLE=TAGS\]|\[ENABLE=TAGS\]|\[DISABLE=MD\]|\[ENABLE=MD\])/gi;
-            const tokens = text.split(controlRe);
-            let result = '';
-
-            for (const token of tokens) {
-                const lower = token.toLowerCase();
-                if (lower === '[disable=tags]') { state.disableTags = true;  continue; }
-                if (lower === '[enable=tags]')  { state.disableTags = false; continue; }
-                if (lower === '[disable=md]')   { state.disableMD  = true;  continue; }
-                if (lower === '[enable=md]')    { state.disableMD  = false; continue; }
-                if (!token) continue;
-
-                result += state.disableTags ? applyMD(token, state) : parseSegment(token, state);
-            }
-            return result;
-        };
-
-        // -----------------------------------------------------------------
-        //  ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: оборачивает текстовые узлы в <span class="word">
-        //  для пословной анимации появления
-        // -----------------------------------------------------------------
-
-        const wrapWords = (node) => {
-            if (node.nodeType === Node.TEXT_NODE) {
-                const frag = document.createDocumentFragment();
-                node.nodeValue.split(' ').forEach((word, i, arr) => {
-                    if (word.trim()) {
-                        const span = document.createElement('span');
-                        span.className = 'word';
-                        span.textContent = word;
-                        frag.appendChild(span);
-                    }
-                    if (i < arr.length - 1) {
-                        frag.appendChild(document.createTextNode(' '));
-                    }
-                });
-                return frag;
-            }
-
-            // Рекурсивно клонируем элементный узел
-            const clone = node.cloneNode(false);
-            node.childNodes.forEach(child => clone.appendChild(wrapWords(child)));
-            return clone;
-        };
-
-        // -----------------------------------------------------------------
-        //  ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: анимирует появление элемента
-        // -----------------------------------------------------------------
-
-        const animateElement = async (el) => {
-            const words = el.querySelectorAll('.word');
-            if (words.length > 0) {
-                for (const w of words) {
-                    w.classList.add('revealed');
-                    await new Promise(r => setTimeout(r, 38));
-                    output.scrollTop = output.scrollHeight;
-                }
-            } else {
-                el.classList.add('visible');
-                await new Promise(r => setTimeout(r, 100));
-            }
-        };
-
-        // -----------------------------------------------------------------
-        //  ОСНОВНОЙ ЦИКЛ ПАРСЕРА
-        // -----------------------------------------------------------------
-
-        for (let line of lines) {
-            line = line.trim();
-            if (!line) continue;
-
-            // [COLORCODES] — переопределение цветовой темы
-            if (line.startsWith('[COLORCODES]')) {
-                const colors = {};
-                line.replace('[COLORCODES]', '').split(';').forEach(pair => {
-                    const [k, v] = pair.split('=');
-                    if (k && v) colors[k.trim()] = v.trim();
-                });
-                const base   = colors['Mainpage'] || '#a200ff';
-                const quotes = colors['Quotes']   || base;
-                const tables = colors['Tables']   || base;
-                document.documentElement.style.setProperty('--theme-color',        base);
-                document.documentElement.style.setProperty('--theme-quote-border', quotes);
-                document.documentElement.style.setProperty('--theme-quote-bg',     quotes + '0D');
-                document.documentElement.style.setProperty('--theme-table-bg',     tables + '33');
-                continue;
-            }
-
-            // Закрывающие теги блоков — просто сбрасываем указатели
-            if (line.startsWith('[/TABLE6]'))   { currentTable    = null; continue; }
-            if (line.startsWith('[/FOOTNOTE]')) { currentFootnote = null; continue; }
-            if (line.startsWith('[/QUOTE]'))    { currentQuote    = null; continue; }
-
-            let el;
-            let targetContainer = output;
-
-            // ----- БЛОЧНЫЕ ТЕГИ -----
-
-            if (line.startsWith('[TITLE]')) {
-                el = document.createElement('span');
-                el.className = 'glitch-title';
-                el.textContent = line.replace('[TITLE]', '').trim();
-
-            } else if (line.startsWith('[DANGER]')) {
-                el = document.createElement('div');
-                el.className = 'danger-diamond';
-                el.textContent = line.replace('[DANGER]', '').trim();
-
-            } else if (line.startsWith('[IMAGE]')) {
-                const parts = line.replace('[IMAGE]', '').split('||');
-                const imageName = parts[0].trim();
-                const caption   = parts[1] ? parts[1].trim() : '';
-                const mode      = parts[2] ? parts[2].trim().toLowerCase() : 'right';
-                const scale     = parts[3] ? parseFloat(parts[3].trim()) : 1;
-
-                el = document.createElement('div');
-                el.className = `scp-image-container ${mode}-mode visible`;
-                if (!isNaN(scale)) el.style.setProperty('--img-scale', scale);
-
-                const imageSrc = (localImageMap && localImageMap[imageName])
-                    ? localImageMap[imageName]
-                    : `${currentDossierPath}images/${imageName}`;
-
-                el.innerHTML = `<img src="${imageSrc}" alt="${caption}"><div class="scp-image-caption">${caption}</div>`;
-
-            } else if (line.startsWith('[TABLE6]')) {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'table-wrapper visible';
-                currentTable = document.createElement('table');
-                currentTable.className = 'table6';
-                wrapper.appendChild(currentTable);
-                el = wrapper;
-
-            } else if (line.startsWith('[QUOTE]')) {
-                currentQuote = document.createElement('blockquote');
-                el = currentQuote;
-
-            } else if (line.startsWith('[FOOTNOTE]')) {
-                currentFootnote = document.createElement('div');
-                currentFootnote.className = 'footnote';
-                el = currentFootnote;
-
-            } else {
-                // ----- СТРОКИ ВНУТРИ ТАБЛИЦЫ -----
-                if (currentTable && line.includes('||')) {
-                    const tr = document.createElement('tr');
-                    line.split('||').forEach(cellText => {
-                        const td   = document.createElement('td');
-                        const html = applyInlineMarkdown(cellText.trim(), parserState);
-                        const temp = document.createElement('div');
-                        temp.innerHTML = html;
-                        Array.from(temp.childNodes).forEach(n => td.appendChild(wrapWords(n)));
-                        tr.appendChild(td);
-                    });
-                    currentTable.appendChild(tr);
-
-                    // Пословная анимация строки таблицы
-                    const words = tr.querySelectorAll('.word');
-                    if (words.length > 0) {
-                        for (const w of words) {
-                            w.classList.add('revealed');
-                            await new Promise(r => setTimeout(r, 38));
-                            output.scrollTop = output.scrollHeight;
-                        }
-                    } else {
-                        tr.classList.add('visible');
-                        await new Promise(r => setTimeout(r, 100));
-                    }
-                    continue;
-                }
-
-                // ----- ОБЫЧНЫЕ СТРОКИ: MARKDOWN + КАСТОМНЫЕ ТЕГИ -----
-
-                let isListItem = false;
-                const listMatch    = line.match(/^[-*]\s+(.*)/);
-                const mdHeaderMatch = line.match(/^(#{1,6})\s+(.*)/);
-
-                if (listMatch) {
-                    isListItem = true;
-                    el = document.createElement('li');
-                    line = listMatch[1];
-
-                } else if (line === '---' || line === '***') {
-                    el = document.createElement('hr');
-                    el.className = 'scp-hr';
-                    line = '';
-
-                } else if (line === '.') {
-                    el = document.createElement('div');
-                    el.style.height = '1.5em';
-                    line = '';
-
-                } else if (mdHeaderMatch) {
-                    const level = mdHeaderMatch[1].length;
-                    el = document.createElement(`h${level}`);
-                    el.classList.add('scp-header', `scp-h${level}`);
-                    line = mdHeaderMatch[2];
-
-                } else {
-                    // Поддержка устаревших заголовков [H1]–[H6] (для совместимости)
-                    const legacyHeader = line.match(/^\[H([1-6])\]/i);
-                    if (legacyHeader) {
-                        const level = legacyHeader[1];
-                        el = document.createElement(`h${level}`);
-                        el.classList.add('scp-header', `scp-h${level}`);
-                        line = line.replace(legacyHeader[0], '').trim();
-                    } else {
-                        el = document.createElement('p');
-                    }
-                }
-
-                // [CENTER] — выравнивание по центру
-                if (line.includes('[CENTER]')) {
-                    el.classList.add('center');
-                    line = line.replace('[CENTER]', '').trim();
-                }
-
-                // Управление контейнерами: списки, цитаты, сноски
-                if (isListItem) {
-                    if (!currentList) {
-                        currentList = document.createElement('ul');
-                        currentList.className = 'scp-list';
-                        const parent = currentQuote ?? currentFootnote ?? output;
-                        parent.appendChild(currentList);
-                    }
-                    targetContainer = currentList;
-                } else {
-                    currentList = null; // Закрываем список при переходе к обычному тексту
-                    targetContainer = currentQuote ?? currentFootnote ?? output;
-                }
-
-                // Применяем инлайн-парсер и оборачиваем слова
-                const html = applyInlineMarkdown(line, parserState);
-                const temp = document.createElement('div');
-                temp.innerHTML = html;
-                Array.from(temp.childNodes).forEach(n => el.appendChild(wrapWords(n)));
-            }
-
-            // Добавляем элемент в нужный контейнер и запускаем анимацию
-            targetContainer.appendChild(el);
-            await animateElement(el);
+        const consoleArea = document.getElementById('console-area');
+        if (consoleArea?.parentNode) {
+            consoleArea.insertAdjacentElement('afterend', banner);
+        } else {
+            document.body.appendChild(banner);
         }
 
-        // Маркер конца документа
-        const endLine = document.createElement('div');
-        endLine.classList.add('doc-line');
-        endLine.appendChild(Object.assign(document.createElement('span'), { textContent: '[КОНЕЦ ДОКУМЕНТА]' }));
-        output.appendChild(endLine);
-        output.scrollTop = output.scrollHeight;
+        // Пробел → мгновенный вывод
+        const onKeyDown = (e) => {
+            if (e.code === 'Space' || e.key === ' ') {
+                if (document.activeElement?.id === 'cmd-input') return;
+                e.preventDefault();
+                renderer.skip();
+            }
+        };
+        document.addEventListener('keydown', onKeyDown);
+
+        try {
+            await renderer.render(content, output, `${DOSSIERS_ROOT}/${folderId}/`, localImageMap);
+        } finally {
+            banner.remove();
+            document.removeEventListener('keydown', onKeyDown);
+        }
+    },
+
+    /** Инжектирует CSS баннера один раз (guard по id). */
+    _ensureBannerStyles() {
+        if (document.getElementById('echo-banner-style')) return;
+        const st = document.createElement('style');
+        st.id = 'echo-banner-style';
+        st.textContent = `
+            #echo-interrupt-banner {
+                flex-shrink: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 12px;
+                padding: 9px 20px;
+                background: rgba(220, 30, 30, 0.07);
+                border-bottom: 1px solid rgba(220, 30, 30, 0.30);
+                border-top: 1px solid rgba(220, 30, 30, 0.15);
+                font-family: var(--mono-font, monospace);
+                font-size: 0.70em;
+                letter-spacing: 2px;
+                color: rgba(220, 30, 30, 0.85);
+                cursor: pointer;
+                user-select: none;
+                animation: echoBannerPulse 2s ease-in-out infinite;
+                z-index: 20;
+                position: relative;
+                transition: background 0.15s, color 0.15s;
+            }
+            #echo-interrupt-banner:hover {
+                background: rgba(220, 30, 30, 0.14);
+                color: rgba(200, 80, 255, 1);
+            }
+            #echo-interrupt-banner:active {
+                background: rgba(220, 30, 30, 0.22);
+            }
+            #echo-interrupt-banner::before {
+                content: '●';
+                font-size: 0.9em;
+                animation: echoDotBlink 1s step-start infinite;
+                color: rgba(220, 30, 30, 0.9);
+            }
+            @keyframes echoBannerPulse {
+                0%, 100% { box-shadow: 0 0 8px rgba(220, 30, 30,0.15),
+                                       inset 0 0 12px rgba(220, 30, 30,0.04); }
+                50%      { box-shadow: 0 0 18px rgba(220, 30, 30,0.28),
+                                       inset 0 0 20px rgba(220, 30, 30,0.08); }
+            }
+            @keyframes echoDotBlink {
+                0%, 49% { opacity: 1; }
+                50%, 100% { opacity: 0; }
+            }
+        `;
+        document.head.appendChild(st);
     },
 };

@@ -1,5 +1,5 @@
 // Глобальный список для автодополнения в main.js
-const COMMAND_LIST = ['get', 'help', 'clear', 'reboot', 'upload'];
+const COMMAND_LIST = ['get', 'help', 'clear', 'echo', 'reboot', 'upload'];
 
 const CommandHandler = {
     async execute(rawInput, terminal) {
@@ -27,7 +27,9 @@ const CommandHandler = {
             case 'upload':
                 await CmdUpload.execute(args, terminal);
                 break;
-
+            case 'echo':
+                await CmdEcho.execute(args, terminal);
+                break;
             default:
                 if (cmd !== '') {
                     terminal.printError(`КОМАНДА НЕ РАСПОЗНАНА: ${cmd}. Введите help для списка команд.`);

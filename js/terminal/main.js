@@ -66,6 +66,7 @@ async function showSplash() {
         document.getElementById(id).classList.remove('show');
     });
     sub.classList.remove('show');
+    input.focus();
     await handleUrlParams();
 }
 
@@ -168,7 +169,6 @@ async function startAuth() {
 
     document.body.classList.remove('locked');
     localStorage.setItem('has_seen_intro', 'true');
-    input.focus();
 }
 
 window.onload = async () => {
@@ -217,7 +217,11 @@ input.addEventListener('keydown', async (e) => {
     }
 });
 
-document.addEventListener('click', () => input.focus());
+// Авто-фокус только на десктопе (устройствах с мышью).
+// На мобильных каждый клик/тап вызывал бы открытие клавиатуры.
+if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    document.addEventListener('click', () => input.focus());
+}
 
 // --- API ТЕРМИНАЛА ---
 const TerminalAPI = {
@@ -255,7 +259,11 @@ const TerminalAPI = {
 
     unlockInput() {
         input.disabled = false;
-        input.focus();
+        // Фокус только на десктопе — на мобильных программный focus() без
+        // жеста пользователя всё равно не открывает клавиатуру (iOS/Android).
+        if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+            input.focus();
+        }
     },
 
     async typeAndExecute(command) {
