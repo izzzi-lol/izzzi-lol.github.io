@@ -18,55 +18,69 @@ async function handleUrlParams() {
 
     window.history.replaceState({}, document.title, window.location.pathname);
 }
-// --- SCP СПЛЭШ (показывается после авторизации) ---
+
+// --- SCP СПЛЭШ ---
 async function showSplash() {
-    const splash   = document.getElementById('scp-splash');
-    const logo     = document.getElementById('splash-logo');
-    const glow     = document.getElementById('splash-logo-glow');
-    const sub      = document.getElementById('splash-sub');
-    const delay    = ms => new Promise(r => setTimeout(r, ms));
+    const splash = document.getElementById('scp-splash');
+    const logo   = document.getElementById('splash-logo');
+    const glow   = document.getElementById('splash-logo-glow');
+    const sub    = document.getElementById('splash-sub');
+    const delay  = ms => new Promise(r => setTimeout(r, ms));
 
     splash.style.display = 'flex';
 
-    // Логотип появляется
+    // Небольшая пауза, чтобы display:flex применился до старта анимаций
     await delay(80);
+
+    // Запускаем анимацию SVG-логотипа и фонового свечения
     logo.classList.add('animate');
     glow.classList.add('animate');
 
-    // "SECURE." — пауза — "CONTAIN." — пауза — "PROTECT."
-    await delay(700);
+    // Слова "SECURE. CONTAIN. PROTECT." появляются по очереди
+    // пока стрелки ещё летят — создаёт ощущение динамики
+    await delay(480);
     document.getElementById('sw-secure').classList.add('show');
-    await delay(380);
+    await delay(240);
     document.getElementById('sw-contain').classList.add('show');
-    await delay(380);
+    await delay(240);
     document.getElementById('sw-protect').classList.add('show');
 
     // Подпись
-    await delay(300);
+    await delay(200);
     sub.classList.add('show');
 
-    // Держим
-    await delay(1400);
+    // Держим собранный логотип на экране
+    await delay(1600);
 
-    // Fade out
+    // Плавное исчезновение сплэша
     splash.classList.add('fade-out');
-    await delay(900);
+    await delay(900); // ждём полного завершения анимации fade-out
+
+    // Убираем из DOM-потока после исчезновения
     splash.style.display = 'none';
+    // Сбрасываем классы на случай повторного показа
+    splash.classList.remove('fade-out');
+    logo.classList.remove('animate');
+    glow.classList.remove('animate');
+    ['sw-secure','sw-contain','sw-protect'].forEach(id => {
+        document.getElementById(id).classList.remove('show');
+    });
+    sub.classList.remove('show');
 }
 
 // --- ЛОГИКА АВТОРИЗАЦИИ ---
 async function startAuth() {
     authOverlay.style.display = 'flex';
 
-    const progressWrap = document.getElementById('auth-progress-wrap');
-    const progressBar  = document.getElementById('auth-progress-bar');
+    const progressWrap  = document.getElementById('auth-progress-wrap');
+    const progressBar   = document.getElementById('auth-progress-bar');
     const progressLabel = document.getElementById('auth-progress-label');
-    const scanner      = document.getElementById('auth-scanner');
-    const authFinal    = document.getElementById('auth-final');
+    const scanner       = document.getElementById('auth-scanner');
+    const authFinal     = document.getElementById('auth-final');
 
     const delay = ms => new Promise(r => setTimeout(r, ms));
 
-    // Функция: добавить строку в лог
+    // Добавить строку в лог авторизации
     function printLog(text, color = '') {
         const line = document.createElement('div');
         line.className = 'log-line';
@@ -76,7 +90,7 @@ async function startAuth() {
         authTerminal.scrollTop = authTerminal.scrollHeight;
     }
 
-    // Функция: анимировать прогресс-бар от from до to за duration мс
+    // Анимировать прогресс-бар от from до to за duration мс
     async function animateProgress(from, to, duration, label) {
         progressLabel.textContent = label;
         const steps = 30;
@@ -88,7 +102,7 @@ async function startAuth() {
         }
     }
 
-    // === ФАЗА 1: Быстрые системные логи ===
+    // === ФАЗА 1: Системные логи ===
     await delay(200);
     const logs = [
         ["> SCIPNET BOOT SEQUENCE v4.1.9...",         120],
@@ -109,7 +123,7 @@ async function startAuth() {
     // === ФАЗА 2: Прогресс-бар ===
     await delay(100);
     progressWrap.style.display = 'flex';
-    await animateProgress(0, 40,  400, 'LOADING CORE SYSTEMS...');
+    await animateProgress(0,  40, 400, 'LOADING CORE SYSTEMS...');
     await animateProgress(40, 75, 350, 'ESTABLISHING SECURE LINK...');
     await animateProgress(75, 95, 250, 'VERIFYING CREDENTIALS...');
     printLog("> CREDENTIALS VERIFIED. INITIATING BIOMETRIC SCAN...");
@@ -117,10 +131,10 @@ async function startAuth() {
     await delay(200);
     progressWrap.style.display = 'none';
 
-    // === ФАЗА 3: Сканер ===
+    // === ФАЗА 3: Сканер сетчатки ===
     scanner.style.display = 'flex';
     printLog("> RETINA SCAN IN PROGRESS...");
-    await delay(1400); // время работы сканера
+    await delay(1400);
 
     printLog("> SCAN COMPLETE. ANALYZING...");
     await delay(400);
@@ -131,16 +145,25 @@ async function startAuth() {
     await delay(300);
     authFinal.textContent = 'ACCESS GRANTED';
     authFinal.className = 'granted';
-    await delay(900);
-
-    // === ФАЗА 5: Fade out → Сплэш → Терминал ===
-    authOverlay.style.opacity = '0';
-    authOverlay.style.transition = 'opacity 0.7s ease';
     await delay(700);
-    authOverlay.style.display = 'none';
 
-    // Показываем SCP сплэш
-    await showSplash();
+    // === ФАЗА 5: Переход к сплэшу ===
+    // Плавно прячем текст терминала авторизации
+    authTerminal.style.transition = 'opacity 0.5s ease, filter 0.5s ease';
+    authTerminal.style.opacity = '0';
+    authTerminal.style.filter = 'blur(10px)';
+    authFinal.style.transition = 'opacity 0.5s ease';
+    authFinal.style.opacity = '0';
+    await delay(350);
+
+    // Показываем сплэш (z-index 10000 > auth-overlay 9999 — сплэш поверх оверлея).
+    // showSplash() блокирует до полного завершения анимации.
+    showSplash();
+
+    await delay(200);
+    // После исчезновения сплэша убираем оверлей — он уже скрыт сплэшем,
+    // поэтому мгновенное скрытие не заметно для пользователя.
+    authOverlay.style.display = 'none';
 
     document.body.classList.remove('locked');
     localStorage.setItem('last_session', Date.now());
@@ -162,7 +185,7 @@ window.onload = async () => {
     }
 };
 
-// --- АВТОДОПОЛНЕНИЕ (Подсказки) ---
+// --- АВТОДОПОЛНЕНИЕ ---
 input.addEventListener('input', () => {
     const val = input.value.toLowerCase();
     if (!val) { suggestion.textContent = ''; return; }
@@ -189,7 +212,6 @@ input.addEventListener('keydown', async (e) => {
         suggestion.textContent = '';
         TerminalAPI.lockInput();
 
-        // Передаем управление в роутер команд
         await CommandHandler.execute(rawInput, TerminalAPI);
 
         TerminalAPI.unlockInput();
@@ -198,9 +220,9 @@ input.addEventListener('keydown', async (e) => {
 
 document.addEventListener('click', () => input.focus());
 
-// --- API ТЕРМИНАЛА (Для использования в командах) ---
+// --- API ТЕРМИНАЛА ---
 const TerminalAPI = {
-    getOutputNode: () => output, // Отдаем ссылку на экран для парсера
+    getOutputNode: () => output,
 
     printError(text) {
         let el = document.createElement('div');
@@ -237,49 +259,38 @@ const TerminalAPI = {
         input.focus();
     },
 
-    // --- АНИМАЦИЯ ВВОДА КОМАНДЫ И ВЫПОЛНЕНИЕ ---
-    // Вызывается при клике на [CMD=...] тег
     async typeAndExecute(command) {
-        // Блокируем ввод на время анимации
         this.lockInput();
         input.value = '';
         suggestion.textContent = '';
 
-        // Печатаем команду посимвольно
         for (let i = 0; i < command.length; i++) {
             input.value += command[i];
-            await new Promise(r => setTimeout(r, 60)); // скорость печати (мс на символ)
+            await new Promise(r => setTimeout(r, 60));
         }
 
-        // Небольшая пауза перед выполнением — как будто нажали Enter
         await new Promise(r => setTimeout(r, 400));
 
-        // Выводим команду в терминал и очищаем поле
         this.printSystem(`> ${command}`, '#fff');
         input.value = '';
         suggestion.textContent = '';
 
-        // Выполняем команду
         await CommandHandler.execute(command, TerminalAPI);
         this.unlockInput();
     },
 
-    // --- ПАРСЕР ТЕГА [CMD="..."][LABEL][/CMD] ---
-    // Превращает теги в кликабельные ссылки прямо в DOM-узле
     parseCmdTags(container) {
-        // Ищем все текстовые узлы внутри контейнера
         const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
         const textNodes = [];
         let node;
         while ((node = walker.nextNode())) textNodes.push(node);
 
-        // Регулярка для тега: [CMD="команда"][МЕТКА][/CMD]
         const tagRegex = /\[CMD="([^"]+)"\](\[.*?\])\[\/CMD\]/g;
 
         for (const textNode of textNodes) {
             const raw = textNode.textContent;
             if (!tagRegex.test(raw)) continue;
-            tagRegex.lastIndex = 0; // сбрасываем после test()
+            tagRegex.lastIndex = 0;
 
             const fragment = document.createDocumentFragment();
             let lastIndex = 0;
@@ -288,12 +299,10 @@ const TerminalAPI = {
             while ((match = tagRegex.exec(raw)) !== null) {
                 const [fullMatch, command, label] = match;
 
-                // Текст до тега — просто текстовый узел
                 if (match.index > lastIndex) {
                     fragment.appendChild(document.createTextNode(raw.slice(lastIndex, match.index)));
                 }
 
-                // Создаём кликабельный элемент
                 const link = document.createElement('span');
                 link.textContent = label;
                 link.title = `Выполнить: ${command}`;
@@ -313,7 +322,6 @@ const TerminalAPI = {
                 lastIndex = match.index + fullMatch.length;
             }
 
-            // Остаток текста после последнего тега
             if (lastIndex < raw.length) {
                 fragment.appendChild(document.createTextNode(raw.slice(lastIndex)));
             }
@@ -322,12 +330,10 @@ const TerminalAPI = {
         }
     },
 
-    // --- ВЫВОД HTML С ПОДДЕРЖКОЙ [CMD] ТЕГОВ ---
-    // Используй этот метод в cmd_get.js вместо innerHTML напрямую
     printHTML(html) {
         const el = document.createElement('div');
         el.innerHTML = html;
-        this.parseCmdTags(el); // обрабатываем теги перед вставкой
+        this.parseCmdTags(el);
         output.appendChild(el);
         this.scrollToBottom();
     },

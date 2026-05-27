@@ -12,10 +12,10 @@
     --scan-dark:     rgba(0, 0, 0, 0.18);
 
     /* Цвета темы (Мираж по умолчанию) */
-    --theme-color: #a200ff;
-    --theme-quote-border: #a200ff;
-    --theme-quote-bg: rgba(162, 0, 255, 0.05);
-    --theme-table-bg: rgba(162, 0, 255, 0.2);
+    --theme-color: #00ff21;
+    --theme-quote-border: #00a809;
+    --theme-quote-bg: rgba(0, 168, 9, 0.05);
+    --theme-table-bg: rgb(0, 209, 59);
     --img-scale: 1;
 }
 
@@ -33,6 +33,15 @@ body {
     color: #d1d1d1;
 }
 
+del {
+    text-decoration: line-through !important;
+    text-decoration-color: #a00000;
+}
+
+del .word {
+    text-decoration: line-through !important;
+    text-decoration-color: #a00000;
+}
 /* 2. КОНТЕЙНЕР */
 #container {
     width: 100vw;
@@ -758,28 +767,30 @@ body.locked { overflow: hidden; }
 #dossier-output::-webkit-scrollbar-track { background: #050505; }
 #dossier-output::-webkit-scrollbar-thumb { background: rgba(0,255,65,0.25); border-radius: 2px; }
 #dossier-output::-webkit-scrollbar-thumb:hover { background: rgba(0,255,65,0.5); }
+
 /* ============================================
-   SCP SPLASH SCREEN
+   SCP SPLASH SCREEN  —  ПЕРЕРАБОТАННАЯ ВЕРСИЯ
+   Ключевое исправление: z-index 10000 > auth-overlay (9999),
+   иначе сплэш скрыт за оверлеем авторизации!
    ============================================ */
 #scp-splash {
     position: fixed;
     inset: 0;
     background: #000;
-    z-index: 9990; /* между auth (9999) и терминалом (1) */
-    display: none; /* JS управляет */
+    z-index: 10000; /* ← ИСПРАВЛЕНО: было 9990, должно быть > 9999 (auth-overlay) */
+    display: none;  /* JS переключает на flex */
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 36px;
     font-family: var(--mono-font);
-    /* Та же CRT-сетка что и в auth */
     background-image:
         linear-gradient(rgba(0,255,65,0.025) 1px, transparent 1px),
         linear-gradient(90deg, rgba(0,255,65,0.025) 1px, transparent 1px);
     background-size: 40px 40px;
 }
 
-/* Обёртка логотипа — позиционирует glow под картинкой */
+/* Обёртка логотипа */
 #splash-logo-wrap {
     position: relative;
     display: flex;
@@ -787,63 +798,132 @@ body.locked { overflow: hidden; }
     justify-content: center;
 }
 
-/* Размытое свечение под логотипом */
+/* Размытое радиальное свечение ЗА логотипом */
 #splash-logo-glow {
     position: absolute;
-    width: 200px;
-    height: 200px;
+    width: 240px;
+    height: 240px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(0,255,65,0.18) 0%, transparent 70%);
-    filter: blur(20px);
+    background: radial-gradient(circle, rgba(0,255,65,0.22) 0%, transparent 68%);
+    filter: blur(28px);
     opacity: 0;
-    transform: scale(0.5);
-    transition: none;
+    transform: scale(0.35);
+    pointer-events: none;
 }
 
-/* Сам логотип */
+/* ── Сам SVG-логотип ── */
 #splash-logo {
-    width: 150px;
-    height: auto;
-    /* Делаем белым с зелёным glow */
-    filter: brightness(0) invert(1) drop-shadow(0 0 12px rgba(0,255,65,0.7));
-    opacity: 0;
-    transform: scale(0.6);
+    width: 160px;
+    height: 160px;
     position: relative;
     z-index: 1;
+    overflow: visible; /* стрелки в начале анимации выходят за bounds */
+    /* Базовое зелёное свечение появится когда части лого проявятся */
+    filter: drop-shadow(0 0 8px rgba(0,255,65,0.45));
 }
 
-/* === АНИМАЦИЯ ЛОГОТИПА === */
-@keyframes logoAppear {
-    0%   { opacity: 0; transform: scale(0.6); }
-    60%  { opacity: 1; transform: scale(1.06); }
-    80%  { transform: scale(0.98); }
+/* ──────────────────────────────────────────────
+   СТАРТОВОЕ СОСТОЯНИЕ: все части SVG невидимы.
+   transform-origin = центр логотипа (67.7 71.5)
+   в координатах SVG-пространства (viewBox 135×135)
+   ────────────────────────────────────────────── */
+#splash-logo .scp-circle,
+#splash-logo .scp-arrow-1,
+#splash-logo .scp-arrow-2,
+#splash-logo .scp-arrow-3,
+#splash-logo .scp-ring {
+    opacity: 0;
+    transform-origin: 67.7px 71.5px; /* центр логотипа в SVG-координатах */
+}
+
+/* ══════════════════════════════════════════════
+   KEYFRAMES  —  три фазы сборки логотипа
+   ══════════════════════════════════════════════ */
+
+/* ── Фаза 1: Круг вырастает из точки ── */
+@keyframes scpCircleIn {
+    0%   { opacity: 0; transform: scale(0.05); }
+    50%  { opacity: 1; transform: scale(1.14); }   /* небольшое "перепрыгивание" */
+    70%  { transform: scale(0.94); }
+    85%  { transform: scale(1.05); }
     100% { opacity: 1; transform: scale(1); }
 }
 
-@keyframes glowAppear {
-    0%   { opacity: 0; transform: scale(0.5); }
-    60%  { opacity: 1; transform: scale(1.1); }
+/* ── Фаза 2: Стрелки — прилетают с большого расстояния, вращаясь
+      Каждая группа <g> вращается вокруг центра лого (-95° → 0°).
+      Путь внутри группы уже стоит на своём угле (0°/120°/240°),
+      поэтому одна и та же анимация корректно работает для всех трёх. ── */
+@keyframes scpArrowIn {
+    0%   { opacity: 0; transform: rotate(-95deg) scale(3.4); }
+    12%  { opacity: 0.9; }
+    65%  { transform: rotate(8deg)  scale(0.95); }  /* пролетают чуть дальше */
+    82%  { transform: rotate(-3deg) scale(1.02); }  /* отскок назад */
+    100% { opacity: 1; transform: rotate(0deg)  scale(1); }
+}
+
+/* ── Фаза 3: Кольцо раскручивается из сжатого состояния ── */
+@keyframes scpRingIn {
+    0%   { opacity: 0; transform: rotate(-172deg) scale(0.5); }
+    15%  { opacity: 0.6; }
+    24%  { opacity: 1; }
+    70%  { transform: rotate(10deg) scale(1.03); }  /* переборщило */
+    86%  { transform: rotate(-4deg) scale(0.99); }  /* коррекция */
+    100% { opacity: 1; transform: rotate(0deg)  scale(1); }
+}
+
+/* ── Пульсирующее свечение собранного лого ── */
+@keyframes scpLogoPulse {
+    0%, 100% { filter: drop-shadow(0 0 10px rgba(0,255,65,0.55)); }
+    50%       { filter: drop-shadow(0 0 24px rgba(0,255,65,1.0))
+                        drop-shadow(0 0 48px rgba(0,255,65,0.32)); }
+}
+
+/* ── Фоновое свечение за лого ── */
+@keyframes scpGlowAppear {
+    0%   { opacity: 0; transform: scale(0.35); }
+    55%  { opacity: 1; transform: scale(1.18); }
     100% { opacity: 0.8; transform: scale(1); }
 }
 
-/* Пульсация логотипа пока он виден */
-@keyframes logoPulse {
-    0%, 100% { filter: brightness(0) invert(1) drop-shadow(0 0 12px rgba(0,255,65,0.7)); }
-    50%       { filter: brightness(0) invert(1) drop-shadow(0 0 22px rgba(0,255,65,1)) drop-shadow(0 0 40px rgba(0,255,65,0.4)); }
-}
+/* ══════════════════════════════════════════════
+   ЗАПУСК АНИМАЦИИ по классу .animate
+   JS добавляет его на #splash-logo и #splash-logo-glow
+   ══════════════════════════════════════════════ */
 
+/* Пульсация + начальное свечение на самом SVG-элементе */
 #splash-logo.animate {
-    animation:
-        logoAppear 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards,
-        logoPulse 2s ease-in-out 0.9s infinite;
+    animation: scpLogoPulse 2.5s ease-in-out 1.5s infinite;
 }
 
+/* Фоновое свечение (JS добавляет .animate на #splash-logo-glow) */
 #splash-logo-glow.animate {
-    animation: glowAppear 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-    opacity: 0.8;
+    animation: scpGlowAppear 1.1s cubic-bezier(0.22, 1, 0.36, 1) 0.25s forwards;
 }
 
-/* === ТЕКСТ "SECURE. CONTAIN. PROTECT." === */
+/* Фаза 1 — круг */
+#splash-logo.animate .scp-circle {
+    animation: scpCircleIn 0.72s ease-out 0s forwards;
+}
+
+/* Фаза 2 — стрелки (стаггер 140 мс) */
+#splash-logo.animate .scp-arrow-1 {
+    animation: scpArrowIn 0.88s cubic-bezier(0.18, 1.5, 0.36, 1) 0.30s forwards;
+}
+#splash-logo.animate .scp-arrow-2 {
+    animation: scpArrowIn 0.88s cubic-bezier(0.18, 1.5, 0.36, 1) 0.44s forwards;
+}
+#splash-logo.animate .scp-arrow-3 {
+    animation: scpArrowIn 0.88s cubic-bezier(0.18, 1.5, 0.36, 1) 0.58s forwards;
+}
+
+/* Фаза 3 — кольцо (стартует вместе со стрелками) */
+#splash-logo.animate .scp-ring {
+    animation: scpRingIn 1.08s cubic-bezier(0.16, 1.3, 0.36, 1) 0.36s forwards;
+}
+
+/* ══════════════════════════════════════════════
+   ТЕКСТ "SECURE. CONTAIN. PROTECT."
+   ══════════════════════════════════════════════ */
 #splash-tagline {
     display: flex;
     gap: 24px;
@@ -866,7 +946,6 @@ body.locked { overflow: hidden; }
     100% { opacity: 1; transform: translateY(0); }
 }
 
-/* Каждое слово чуть ярче предыдущего */
 #sw-secure  { color: #aaa; }
 #sw-contain { color: #ccc; }
 #sw-protect {
@@ -890,7 +969,9 @@ body.locked { overflow: hidden; }
 
 #splash-sub.show { opacity: 1; }
 
-/* === FADE OUT ВСЕГО СПЛЭША === */
+/* ══════════════════════════════════════════════
+   FADE-OUT сплэша
+   ══════════════════════════════════════════════ */
 @keyframes splashFadeOut {
     0%   { opacity: 1; }
     100% { opacity: 0; }
@@ -898,4 +979,5 @@ body.locked { overflow: hidden; }
 
 #scp-splash.fade-out {
     animation: splashFadeOut 0.9s ease forwards;
+    pointer-events: none;
 }
