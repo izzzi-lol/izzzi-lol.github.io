@@ -24,6 +24,7 @@ class StepRenderer {
         this._output      = null;   // DOM-узел вывода, устанавливается в render()
         this._skip        = false;  // Флаг мгновенного вывода (skip-to-end)
         this._charMode    = false;  // Флаг посимвольного вывода ([CHARMODE]/[WORDMODE])
+        this._scrollRafId = null;   // RAF-handle для debounced-scroll
     }
 
     /**
@@ -33,6 +34,19 @@ class StepRenderer {
      */
     skip() {
         this._skip = true;
+    }
+
+    /**
+     * Скроллит вывод вниз не чаще одного раза за кадр (requestAnimationFrame).
+     * Предотвращает сотни принудительных layout reflow при CHARMODE —
+     * главная причина замедления при длинных ECHO-записях.
+     */
+    _scheduleScroll() {
+        if (this._scrollRafId) return;
+        this._scrollRafId = requestAnimationFrame(() => {
+            this._scrollRafId = null;
+            if (this._output) this._output.scrollTop = this._output.scrollHeight;
+        });
     }
 
     // =========================================================================
@@ -396,7 +410,7 @@ class StepRenderer {
                 }
                 node.classList.add('revealed');
                 await this._delay(this.currentSpeed);
-                this._output.scrollTop = this._output.scrollHeight;
+                this._scheduleScroll();
             }
         } else {
             el.classList.add('visible');
@@ -420,6 +434,10 @@ class StepRenderer {
         this._output      = output;
         this.currentSpeed = this.defaultSpeed;  // сброс скорости в начале каждого рендера
         this._charMode    = false;              // сброс режима вывода в начале каждого рендера
+        if (this._scrollRafId) {
+            cancelAnimationFrame(this._scrollRafId);
+            this._scrollRafId = null;
+        }
 
         const lines       = content.split('\n');
         const parserState = { disableTags: false, disableMD: false };
