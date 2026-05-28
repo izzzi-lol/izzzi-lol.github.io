@@ -23,6 +23,7 @@ class StepRenderer {
         this.currentSpeed = defaultSpeed;
         this._output      = null;   // DOM-узел вывода, устанавливается в render()
         this._skip        = false;  // Флаг мгновенного вывода (skip-to-end)
+        this._charMode    = false;  // Флаг посимвольного вывода ([CHARMODE]/[WORDMODE])
     }
 
     /**
@@ -282,6 +283,18 @@ class StepRenderer {
      *    затем вызывает _parseSegment или _applyMD по флагам.
      */
     _applyInlineMarkdown(text, state) {
+        // Инлайн [SCROLLSPEED=N] / [TIMER=N] → невидимые DOM-маркеры.
+        // Скорость и паузы применяются в _animateElement по мере прохода по словам,
+        // что позволяет синхронизировать их с аудио в любом месте строки.
+        text = text.replace(
+            /\[SCROLLSPEED=([0-9.]+)\]/gi,
+            (_, v) => `<span class="scp-speed-marker" data-speed="${v}" style="display:none"></span>`
+        );
+        text = text.replace(
+            /\[TIMER=([0-9.]+)\]/gi,
+            (_, v) => `<span class="scp-timer-marker" data-delay="${v}" style="display:none"></span>`
+        );
+
         const controlRe = /(\[DISABLE=TAGS\]|\[ENABLE=TAGS\]|\[DISABLE=MD\]|\[ENABLE=MD\])/gi;
         const tokens    = text.split(controlRe);
         let result = '';
@@ -306,17 +319,47 @@ class StepRenderer {
     _wrapWords(node) {
         if (node.nodeType === Node.TEXT_NODE) {
             const frag = document.createDocumentFragment();
-            node.nodeValue.split(' ').forEach((word, i, arr) => {
-                if (word.trim()) {
-                    const span = document.createElement('span');
-                    span.className = 'word';
-                    span.textContent = word;
-                    frag.appendChild(span);
-                }
-                if (i < arr.length - 1) frag.appendChild(document.createTextNode(' '));
-            });
+            if (this._charMode) {
+                // Посимвольный режим: символы каждого слова упакованы в display:inline-block,
+                // чтобы браузер не мог перенести строку внутри слова.
+                node.nodeValue.split(' ').forEach((word, i, arr) => {
+                    if (word.length > 0) {
+                        const wordWrap = document.createElement('span');
+                        wordWrap.style.cssText = 'display:inline-block; white-space:nowrap;';
+                        for (const char of word) {
+                            const span = document.createElement('span');
+                            span.className = 'word';
+                            span.textContent = char;
+                            wordWrap.appendChild(span);
+                        }
+                        frag.appendChild(wordWrap);
+                    }
+                    if (i < arr.length - 1) frag.appendChild(document.createTextNode(' '));
+                });
+            } else {
+                // Пословный режим (по умолчанию)
+                node.nodeValue.split(' ').forEach((word, i, arr) => {
+                    if (word.trim()) {
+                        const span = document.createElement('span');
+                        span.className = 'word';
+                        span.textContent = word;
+                        frag.appendChild(span);
+                    }
+                    if (i < arr.length - 1) frag.appendChild(document.createTextNode(' '));
+                });
+            }
             return frag;
         }
+        // Глитч-спаны — атомарные единицы анимации: весь спан оборачивается в один .word.
+        // Внутрь рекурсировать нельзя: глитч-цикл делает el.textContent = ...,
+        // что уничтожает любые дочерние .word-спаны и ломает reveal-анимацию.
+        if (node.nodeType === Node.ELEMENT_NODE && node.classList?.contains('scp-effect-glitch')) {
+            const wrapper = document.createElement('span');
+            wrapper.className = 'word';
+            wrapper.appendChild(node.cloneNode(true));
+            return wrapper;
+        }
+
         const clone = node.cloneNode(false);
         node.childNodes.forEach(child => clone.appendChild(this._wrapWords(child)));
         return clone;
@@ -328,16 +371,35 @@ class StepRenderer {
      * Структурные (hr, div-разделители): задержка пропорциональна скорости.
      */
     async _animateElement(el) {
-        const words = el.querySelectorAll('.word');
-        if (words.length > 0) {
-            for (const w of words) {
-                w.classList.add('revealed');
+        const nodes = el.querySelectorAll('.word, .scp-speed-marker, .scp-timer-marker');
+        if (nodes.length > 0) {
+            // При скипе — показываем все слова разом без анимации
+            if (this._skip) {
+                el.classList.add('skip-reveal');
+                return;
+            }
+            for (const node of nodes) {
+                if (this._skip) {
+                    // Скип сработал во время цикла — добавляем оставшимся сразу
+                    el.classList.add('skip-reveal');
+                    return;
+                }
+                // Маркер скорости: меняем currentSpeed и продолжаем без задержки
+                if (node.classList.contains('scp-speed-marker')) {
+                    this.currentSpeed = Math.max(1, parseFloat(node.dataset.speed));
+                    continue;
+                }
+                // Маркер паузы: ждём N секунд (skip обнуляет задержку)
+                if (node.classList.contains('scp-timer-marker')) {
+                    await this._delay(parseFloat(node.dataset.delay) * 1000);
+                    continue;
+                }
+                node.classList.add('revealed');
                 await this._delay(this.currentSpeed);
                 this._output.scrollTop = this._output.scrollHeight;
             }
         } else {
             el.classList.add('visible');
-            // Структурные элементы: минимум 40мс, масштабируется со скоростью
             await this._delay(Math.max(40, this.currentSpeed * 2.5));
         }
     }
@@ -357,6 +419,7 @@ class StepRenderer {
     async render(content, output, basePath, localImageMap = {}) {
         this._output      = output;
         this.currentSpeed = this.defaultSpeed;  // сброс скорости в начале каждого рендера
+        this._charMode    = false;              // сброс режима вывода в начале каждого рендера
 
         const lines       = content.split('\n');
         const parserState = { disableTags: false, disableMD: false };
@@ -397,6 +460,12 @@ class StepRenderer {
                     await this._delay(parseFloat(timerMatch[1]) * 1000);
                     continue;
                 }
+
+                // ── [CHARMODE] / [WORDMODE] — режим анимации ─────────────────
+                //    [CHARMODE] → посимвольный вывод
+                //    [WORDMODE] → пословный вывод (по умолчанию)
+                if (line.match(/^\[CHARMODE\]$/i)) { this._charMode = true;  continue; }
+                if (line.match(/^\[WORDMODE\]$/i)) { this._charMode = false; continue; }
 
                 // ── [COLORCODES] — переопределение цветовой темы ─────────────
                 if (line.startsWith('[COLORCODES]')) {
@@ -484,10 +553,15 @@ class StepRenderer {
 
                         const words = tr.querySelectorAll('.word');
                         if (words.length > 0) {
-                            for (const w of words) {
-                                w.classList.add('revealed');
-                                await this._delay(this.currentSpeed);
-                                output.scrollTop = output.scrollHeight;
+                            if (this._skip) {
+                                tr.classList.add('skip-reveal');
+                            } else {
+                                for (const w of words) {
+                                    if (this._skip) { tr.classList.add('skip-reveal'); break; }
+                                    w.classList.add('revealed');
+                                    await this._delay(this.currentSpeed);
+                                    output.scrollTop = output.scrollHeight;
+                                }
                             }
                         } else {
                             tr.classList.add('visible');

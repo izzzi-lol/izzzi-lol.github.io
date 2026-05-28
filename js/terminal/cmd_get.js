@@ -243,7 +243,7 @@ const CmdGet = {
         // Баннер пропуска анимации
         const banner = document.createElement('div');
         banner.id          = 'echo-interrupt-banner';
-        banner.textContent = 'НАЖМИТЕ ПРОБЕЛ ИЛИ КЛИКНИТЕ ЗДЕСЬ, ЧТОБЫ ПРОПУСТИТЬ АНИМАЦИЮ';
+        banner.textContent = 'КЛИКНИТЕ ЗДЕСЬ, ЧТОБЫ ПРОПУСТИТЬ АНИМАЦИЮ';
         banner.addEventListener('click', () => renderer.skip());
 
         const consoleArea = document.getElementById('console-area');

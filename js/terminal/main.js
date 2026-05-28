@@ -5,7 +5,17 @@ const output = document.getElementById('dossier-output');
 const authOverlay = document.getElementById('auth-overlay');
 const authTerminal = document.getElementById('auth-terminal');
 
+function introDelay(ms) {
+    return Promise.race([
+        new Promise(r => setTimeout(r, ms)),
+    ]);
+}
+
+// --- URL ПАРАМЕТРЫ ---
+let _urlParamsHandled = false;
 async function handleUrlParams() {
+    if (_urlParamsHandled) return;
+    _urlParamsHandled = true;
     const urlParams = new URLSearchParams(window.location.search);
     const dossierId = urlParams.get('get');
 
@@ -19,13 +29,14 @@ async function handleUrlParams() {
     window.history.replaceState({}, document.title, window.location.pathname);
 }
 
+
 // --- SCP СПЛЭШ ---
 async function showSplash() {
     const splash = document.getElementById('scp-splash');
     const logo   = document.getElementById('splash-logo');
     const glow   = document.getElementById('splash-logo-glow');
     const sub    = document.getElementById('splash-sub');
-    const delay  = ms => new Promise(r => setTimeout(r, ms));
+    const delay  = introDelay;
 
     splash.style.display = 'flex';
 
@@ -80,7 +91,7 @@ async function startAuth() {
     const scanner       = document.getElementById('auth-scanner');
     const authFinal     = document.getElementById('auth-final');
 
-    const delay = ms => new Promise(r => setTimeout(r, ms));
+    const delay = introDelay;
 
     // Добавить строку в лог авторизации
     function printLog(text, color = '') {
@@ -175,6 +186,7 @@ window.onload = async () => {
     let hasSeenIntro = localStorage.getItem('has_seen_intro');
     if (!hasSeenIntro || (hasSeenIntro === 'false')) { // 5 минут
         document.body.classList.add('locked');
+
         startAuth();
     } else {
         authOverlay.style.display = 'none';
@@ -254,6 +266,7 @@ const TerminalAPI = {
     },
 
     lockInput() {
+        input.blur();          // явно убираем фокус ДО отключения
         input.disabled = true;
     },
 

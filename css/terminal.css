@@ -64,21 +64,6 @@ del .word {
     66%                                       { opacity: 0.97; }
 }
 
-/* ЛОГОТИП НА ФОНЕ */
-#container::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background-image: url("../images/scp_logo.png");
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: 50vh;
-    opacity: 0.04;
-    z-index: -1;
-    pointer-events: none;
-    filter: grayscale(100%) brightness(50%);
-}
-
 /* === CRT ОВЕРЛЕЙ (scanlines + vignette) === */
 #crt-fx {
     position: fixed;
@@ -782,6 +767,14 @@ body.locked { overflow: hidden; }
 .glitch-title {
     font-size: 2.5em;
     text-shadow: 0 0 15px var(--theme-color), 2px 2px 0 rgba(255,0,80,0.3), -2px -2px 0 rgba(0,255,200,0.3);
+}
+
+/* Мгновенный показ всех слов без анимации (при скипе) */
+.skip-reveal .word {
+    opacity: 1 !important;
+    animation: none !important;
+    background: transparent !important;
+    color: inherit !important;
 }
 
 /* Скроллбар в стиле CRT */

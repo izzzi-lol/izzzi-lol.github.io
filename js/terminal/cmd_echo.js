@@ -125,6 +125,7 @@ const CmdEcho = {
         // 2. Создаём аудиоэлемент
         const audio        = new Audio(`${ECHOES_ROOT}/${id}/audio.mp3`);
         audio.preload      = 'auto';
+        audio.volume = 0.75;
         this._currentAudio = audio;
 
         // 3. StepRenderer (без AbortSignal — текст всегда доходит до конца)
@@ -140,7 +141,7 @@ const CmdEcho = {
                 this._interrupt();
             }
         };
-        document.addEventListener('keydown', onKeyDown);
+        window.addEventListener('keydown', onKeyDown, {capture: true});
 
         // 5. Запускаем аудио
         try {
@@ -150,6 +151,7 @@ const CmdEcho = {
         }
 
         // 6. Рендерим текст (ждём полного завершения)
+        terminal.lockInput();
         const outputContainer = TerminalAPI.getOutputNode();
 
         terminal.printSystem(`— НАЧАЛО ЗАПИСИ ${id.toUpperCase()} —`);
@@ -160,7 +162,7 @@ const CmdEcho = {
         } finally {
             // Убираем баннер и слушатель в любом случае
             banner.remove();
-            document.removeEventListener('keydown', onKeyDown);
+            window.removeEventListener('keydown', onKeyDown, { capture: true });
             this._currentRenderer = null;
             this._currentAudio    = null;
             // Аудио гасим, если ещё играет
@@ -168,6 +170,7 @@ const CmdEcho = {
                 audio.pause();
                 audio.currentTime = 0;
             }
+            terminal.unlockInput();
         }
     },
 
@@ -192,9 +195,8 @@ const CmdEcho = {
     _createBanner() {
         const banner       = document.createElement('div');
         banner.id          = 'echo-interrupt-banner';
-        banner.textContent = 'НАЖМИТЕ ПРОБЕЛ ИЛИ КЛИКНИТЕ ЗДЕСЬ, ЧТОБЫ ОСТАНОВИТЬ АУДИО';
+        banner.textContent = 'КЛИКНИТЕ ЗДЕСЬ, ЧТОБЫ ОСТАНОВИТЬ АУДИО';
         banner.addEventListener('click', () => this._interrupt());
-
         const consoleArea = document.getElementById('console-area');
         if (consoleArea?.parentNode) {
             consoleArea.insertAdjacentElement('afterend', banner);
