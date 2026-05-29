@@ -1,5 +1,5 @@
 // Глобальный список для автодополнения в main.js
-const COMMAND_LIST = ['get', 'help', 'clear', 'reboot', 'upload'];
+const COMMAND_LIST = ['get', 'help', 'clear', 'echo', 'reboot', 'upload'];
 
 const CommandHandler = {
     async execute(rawInput, terminal) {
@@ -16,18 +16,52 @@ const CommandHandler = {
                 terminal.clearScreen();
                 break;
             case 'help':
-                terminal.printSystem("ДОСТУПНЫЕ КОМАНДЫ: " + COMMAND_LIST.join(', '));
-                terminal.printSystem("ИСПОЛЬЗОВАНИЕ: get [имя_файла]");
+                terminal.printSystem("╔══════════════════════════════════════════════╗");
+                terminal.printSystem("║         SCIPNET // СПРАВОЧНИК КОМАНД        ║");
+                terminal.printSystem("╚══════════════════════════════════════════════╝");
+                terminal.printSystem(" ");
+                terminal.printSystem("  GET [запрос]", 'var(--terminal-green)');
+                terminal.printSystem("    Поиск и вывод досье по ID или ключевому слову.");
+                terminal.printSystem("    Пример: get 01005423 / get izzy");
+                terminal.printSystem(" ");
+                terminal.printSystem("  ECHO [ID]", 'var(--terminal-green)');
+                terminal.printSystem("    Воспроизведение звуковой записи с субтитрами.");
+                terminal.printSystem("    Записи хранятся в папке echoes/. Пример: echo 01");
+                terminal.printSystem(" ");
+                terminal.printSystem("  UPLOAD", 'var(--terminal-green)');
+                terminal.printSystem("    Загрузка локального досье (.txt) с изображениями");
+                terminal.printSystem("    и/или аудиозаписью (.mp3) прямо из файловой системы.");
+                terminal.printSystem(" ");
+                terminal.printSystem("  CLEAR", 'var(--terminal-green)');
+                terminal.printSystem("    Очистка экрана терминала.");
+                terminal.printSystem(" ");
+                terminal.printSystem("  REBOOT", 'var(--terminal-green)');
+                terminal.printSystem("    Полный перезапуск системы с повторным прохождением");
+                terminal.printSystem("    авторизации и интро-заставки.");
+                terminal.printSystem(" ");
+                terminal.printSystem("  HELP", 'var(--terminal-green)');
+                terminal.printSystem("    Вывод этого справочника.");
+                terminal.printSystem(" ");
+                terminal.printSystem("──────────────────────────────────────────────");
+                terminal.printSystem("  ТЕГИ ДОСЬЕ (внутри .txt файлов):");
+                terminal.printSystem(" ");
+                terminal.printSystem("  [SCROLLSPEED=мс]  — скорость анимации текста");
+                terminal.printSystem("  [CHARMODE]        — посимвольный вывод (машинка)");
+                terminal.printSystem("  [WORDMODE]        — пословный вывод (по умолчанию)");
+                terminal.printSystem("  [TIMER=с]         — пауза в тексте (сек)");
+                terminal.printSystem("──────────────────────────────────────────────");
                 break;
             case 'reboot':
                 terminal.printSystem("ПЕРЕЗАГРУЗКА СИСТЕМЫ...");
-                localStorage.clear();
+                localStorage.setItem('has_seen_intro', 'false');
                 setTimeout(() => location.reload(), 1500);
                 break;
             case 'upload':
                 await CmdUpload.execute(args, terminal);
                 break;
-
+            case 'echo':
+                await CmdEcho.execute(args, terminal);
+                break;
             default:
                 if (cmd !== '') {
                     terminal.printError(`КОМАНДА НЕ РАСПОЗНАНА: ${cmd}. Введите help для списка команд.`);
