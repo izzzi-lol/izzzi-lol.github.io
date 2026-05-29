@@ -384,18 +384,34 @@ class StepRenderer {
      * Текстовые элементы: пословно с задержкой currentSpeed мс/слово.
      * Структурные (hr, div-разделители): задержка пропорциональна скорости.
      */
+    /**
+     * После анимации заменяет все <span class="word"> обратно на текстовые узлы.
+     * Резко снижает количество DOM-узлов — с тысяч до единиц.
+     */
+    _unwrapWords(el) {
+        el.querySelectorAll('.word').forEach(span => {
+            span.replaceWith(document.createTextNode(span.textContent));
+        });
+        el.normalize(); // склеивает соседние текстовые узлы в один
+    }
+
     async _animateElement(el) {
         const nodes = el.querySelectorAll('.word, .scp-speed-marker, .scp-timer-marker');
         if (nodes.length > 0) {
             // При скипе — показываем все слова разом без анимации
             if (this._skip) {
                 el.classList.add('skip-reveal');
+                await this._delay(0); // один кадр — браузер применяет стили
+                this._unwrapWords(el);
+                el.classList.remove('skip-reveal');
                 return;
             }
             for (const node of nodes) {
                 if (this._skip) {
-                    // Скип сработал во время цикла — добавляем оставшимся сразу
                     el.classList.add('skip-reveal');
+                    await this._delay(0);
+                    this._unwrapWords(el);
+                    el.classList.remove('skip-reveal');
                     return;
                 }
                 // Маркер скорости: меняем currentSpeed и продолжаем без задержки
@@ -412,6 +428,9 @@ class StepRenderer {
                 await this._delay(this.currentSpeed);
                 this._scheduleScroll();
             }
+            // Анимация завершена — ждём конца CSS (0.18s) и чистим спаны
+            await this._delay(190);
+            this._unwrapWords(el);
         } else {
             el.classList.add('visible');
             await this._delay(Math.max(40, this.currentSpeed * 2.5));
@@ -573,13 +592,25 @@ class StepRenderer {
                         if (words.length > 0) {
                             if (this._skip) {
                                 tr.classList.add('skip-reveal');
+                                await this._delay(0);
+                                this._unwrapWords(tr);
+                                tr.classList.remove('skip-reveal');
                             } else {
                                 for (const w of words) {
-                                    if (this._skip) { tr.classList.add('skip-reveal'); break; }
+                                    if (this._skip) {
+                                        tr.classList.add('skip-reveal');
+                                        await this._delay(0);
+                                        this._unwrapWords(tr);
+                                        tr.classList.remove('skip-reveal');
+                                        break;
+                                    }
                                     w.classList.add('revealed');
                                     await this._delay(this.currentSpeed);
                                     output.scrollTop = output.scrollHeight;
                                 }
+                                // Анимация строки завершена — чистим спаны
+                                await this._delay(190);
+                                this._unwrapWords(tr);
                             }
                         } else {
                             tr.classList.add('visible');
