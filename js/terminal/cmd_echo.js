@@ -148,8 +148,13 @@ const CmdEcho = {
             await audio.play();
         } catch (_) {
             terminal.printSystem('⚠ АУДИО НЕДОСТУПНО — ТОЛЬКО СУБТИТРЫ');
-        }
-
+        } finally {	
+            banner.remove();
+            window.removeEventListener('keydown', onKeyDown, { capture: true });
+            this._currentRenderer = null;
+            this._currentAudio    = null;
+            terminal.unlockInput();
+		}
         // 6. Рендерим текст (ждём полного завершения)
         terminal.lockInput();
         const outputContainer = TerminalAPI.getOutputNode();
@@ -157,21 +162,7 @@ const CmdEcho = {
         terminal.printSystem(`— НАЧАЛО ЗАПИСИ ${id.toUpperCase()} —`);
         await new Promise(r => setTimeout(r, 20));
 
-        try {
-            await renderer.render(textContent, outputContainer, `${ECHOES_ROOT}/${id}/`);
-        } finally {
-            // Убираем баннер и слушатель в любом случае
-            banner.remove();
-            window.removeEventListener('keydown', onKeyDown, { capture: true });
-            this._currentRenderer = null;
-            this._currentAudio    = null;
-            // Аудио гасим, если ещё играет
-            if (!audio.paused) {
-                audio.pause();
-                audio.currentTime = 0;
-            }
-            terminal.unlockInput();
-        }
+        await renderer.render(textContent, outputContainer, `${ECHOES_ROOT}/${id}/`);
     },
 
     // -------------------------------------------------------------------------

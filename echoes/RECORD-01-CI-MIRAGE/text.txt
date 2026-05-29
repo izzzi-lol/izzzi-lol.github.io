@@ -23,4 +23,4 @@
 - [SCROLLSPEED=0]«Мираж»:[SCROLLSPEED=50] А вы забавные ребята.[TIMER=1] Искать таких безумцев — одно удовольствие.[TIMER=1] Вы мне определенно начинаете нравиться, Мистер Повстанец.[TIMER=1]
 - [SCROLLSPEED=0]████████:[SCROLLSPEED=50] Значит[SCROLLSPEED=200]...[SCROLLSPEED=50] мы пришли к соглашению?[TIMER=1]
 - [SCROLLSPEED=0]«Мираж»:[SCROLLSPEED=75] Думаю, мы поняли друг друга.
-- [SCROLLSPEED=0]████████:[SCROLLSPEED=50] Рад это слышать.[TIMER=1] В таком случае, вы свободны.[TIMER=3]
+- [SCROLLSPEED=0]████████:[SCROLLSPEED=50] Рад это слышать.[TIMER=1] В таком случае, вы свободны.
