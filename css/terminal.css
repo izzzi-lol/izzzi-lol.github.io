@@ -35,6 +35,7 @@ body {
 
 del {
     text-decoration: line-through !important;
+    color: inherit;
     text-decoration-color: #a00000;
 }
 
