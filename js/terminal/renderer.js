@@ -712,5 +712,6 @@ class StepRenderer {
             output.appendChild(endLine);
             output.scrollTop = output.scrollHeight;
         }
+        this._skip = false;
     }
 }
