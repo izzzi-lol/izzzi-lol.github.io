@@ -701,7 +701,6 @@ class StepRenderer {
 
         } catch (e) {
             if (e.name !== 'AbortError') throw e;
-            
             return;
         }
         if (renderStartEnd) {
