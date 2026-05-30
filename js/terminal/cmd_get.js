@@ -238,8 +238,6 @@ const CmdGet = {
     async renderStepByStep(content, output, folderId, localImageMap = {}) {
         this._ensureBannerStyles();
 
-        const renderer = new StepRenderer();
-
         // Баннер пропуска анимации
         const banner = document.createElement('div');
         banner.id          = 'echo-interrupt-banner';

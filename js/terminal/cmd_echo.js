@@ -129,7 +129,6 @@ const CmdEcho = {
         this._currentAudio = audio;
 
         // 3. StepRenderer (без AbortSignal — текст всегда доходит до конца)
-        const renderer        = new StepRenderer();
         this._currentRenderer = renderer;
 
         // 4. Баннер + слушатель пробела

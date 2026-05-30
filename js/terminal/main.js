@@ -4,6 +4,7 @@ const suggestion = document.getElementById('cmd-suggestion');
 const output = document.getElementById('dossier-output');
 const authOverlay = document.getElementById('auth-overlay');
 const authTerminal = document.getElementById('auth-terminal');
+const renderer = new StepRenderer();
 
 function introDelay(ms) {
     return Promise.race([
@@ -194,8 +195,6 @@ window.onload = async () => {
         document.body.classList.remove('locked');
         input.focus();
     }
-
-    const renderer = new StepRenderer();
 
     await renderer.render("[SIZE=24][SCP FOUNDATION'S DOSSIER HUB][/SIZE][TIMER=1]",
         output, '', null, false);

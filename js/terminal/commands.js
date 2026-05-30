@@ -16,9 +16,9 @@ const CommandHandler = {
                 terminal.clearScreen();
                 break;
             case 'help':
-                terminal.printSystem("╔══════════════════════════════════════════════╗");
-                terminal.printSystem("║         SCIPNET // СПРАВОЧНИК КОМАНД        ║");
-                terminal.printSystem("╚══════════════════════════════════════════════╝");
+                terminal.printSystem("╔══════════════════════════════════════════╗");
+                terminal.printSystem("║       SCIPNET // СПРАВОЧНИК КОМАНД       ║");
+                terminal.printSystem("╚══════════════════════════════════════════╝");
                 terminal.printSystem(" ");
                 terminal.printSystem("  GET [запрос]", 'var(--terminal-green)');
                 terminal.printSystem("    Поиск и вывод досье по ID или ключевому слову.");
@@ -43,12 +43,10 @@ const CommandHandler = {
                 terminal.printSystem("    Вывод этого справочника.");
                 terminal.printSystem(" ");
                 terminal.printSystem("──────────────────────────────────────────────");
-                terminal.printSystem("  ТЕГИ ДОСЬЕ (внутри .txt файлов):");
-                terminal.printSystem(" ");
-                terminal.printSystem("  [SCROLLSPEED=мс]  — скорость анимации текста");
-                terminal.printSystem("  [CHARMODE]        — посимвольный вывод (машинка)");
-                terminal.printSystem("  [WORDMODE]        — пословный вывод (по умолчанию)");
-                terminal.printSystem("  [TIMER=с]         — пауза в тексте (сек)");
+            await renderer.render("[SCROLLSPEED=0]        -> [HREF=https://github.com/izzzi-lol/izzzi-lol.github.io/blob/main/README.md]Туториал для написания досье[/HREF] <-",
+                    terminal.getOutputNode(), '', null, false);
+                terminal.printSystem("Если вы хотите опубликовать своё досье здесь - обратитесь к администратору!")
+                terminal.printSystem("Discord: izzzi_lol")
                 terminal.printSystem("──────────────────────────────────────────────");
                 break;
             case 'reboot':
