@@ -183,17 +183,26 @@ async function startAuth() {
 }
 
 window.onload = async () => {
+    TerminalAPI.lockInput();
     let hasSeenIntro = localStorage.getItem('has_seen_intro');
     if (!hasSeenIntro || (hasSeenIntro === 'false')) { // 5 минут
         document.body.classList.add('locked');
 
-        startAuth();
+        await startAuth();
     } else {
         authOverlay.style.display = 'none';
         document.body.classList.remove('locked');
         input.focus();
-        await handleUrlParams();
     }
+
+    const renderer = new StepRenderer();
+
+    await renderer.render("[SIZE=24][SCP FOUNDATION'S DOSSIER HUB][/SIZE][TIMER=1]",
+        output, '', null, false);
+    await renderer.render(`Введите команду [CMD="help"]"help"[/CMD], чтобы приступить.`,
+        output, '', null, false);
+    await handleUrlParams();
+    TerminalAPI.unlockInput();
 };
 
 // --- АВТОДОПОЛНЕНИЕ ---

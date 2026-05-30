@@ -218,7 +218,7 @@ class StepRenderer {
             case 'color':   return `<span style="color:${attr}">${innerHtml}</span>`;
             case 'bgcolor': return `<span style="background-color:${attr}; padding:0 4px; border-radius:2px;">${innerHtml}</span>`;
             case 'href':    return `<a href="${attr}" target="_blank" class="scp-link">${innerHtml}</a>`;
-            case 'size':    return `<span style="font-size:${attr};">${innerHtml}</span>`;
+            case 'size':    return `<span style="font-size:${attr}px;">${innerHtml}</span>`;
             case 'effect': {
                 const m = attr.match(/GLITCH;INTENSIVE=([0-9.]+)/i);
                 return m ? this._renderGlitch(parseFloat(m[1]), innerHtml) : innerHtml;
@@ -238,14 +238,14 @@ class StepRenderer {
      *      [size=VALUE]…[/size]
      *      [EFFECT=GLITCH;INTENSIVE=N]…[/EFFECT]
      *    Отдельно (не вложенный):
-     *      [CMD="cmd"][label][/CMD]
+     *      [CMD="cmd"]label[/CMD]
      */
     static get NESTABLE_TAGS() {
         return [
             { name: 'color',   openRe: /\[color=(#[0-9a-fA-F]{3,8})\]/i   },
             { name: 'bgcolor', openRe: /\[bgcolor=(#[0-9a-fA-F]{3,8})\]/i },
             { name: 'href',    openRe: /\[href=([^\]]+)\]/i                },
-            { name: 'size',    openRe: /\[size=([0-9a-z.%]+)\]/i           },
+            { name: 'size',    openRe: /\[size=([0-9]+)\]/i           },
             { name: 'effect',  openRe: /\[effect=([^;\]]+;[^\]]+)\]/i     },
         ];
     }
@@ -259,7 +259,7 @@ class StepRenderer {
             }
         }
 
-        const cmdRe  = /\[CMD="([^"]+)"\](\[.*?\])\[\/CMD\]/i;
+        const cmdRe  = /\[CMD="([^"]+)"\](.*?)\[\/CMD\]/i;
         const cmdM   = cmdRe.exec(text);
         const useCMD = cmdM && (earliest === null || cmdM.index < earliest.index);
 
@@ -457,32 +457,33 @@ class StepRenderer {
      * @param {Element} output          DOM-узел для вывода
      * @param {string}  basePath        Базовый путь для ресурсов, напр. "dossiers/01-B/"
      * @param {object}  [localImageMap] Карта имён → data-URL для локальных изображений
+     * @param {object}  [renderStartEnd] Выводить [НАЧАЛО ДОКУМЕНТА] и [КОНЕЦ ДОКУМЕНТА]
      */
-    async render(content, output, basePath, localImageMap = {}) {
-        this._output      = output;
+    async render(content, output, basePath, localImageMap = {}, renderStartEnd = true) {
+        this._output = output;
         this.currentSpeed = this.defaultSpeed;  // сброс скорости в начале каждого рендера
-        this._charMode    = false;              // сброс режима вывода в начале каждого рендера
+        this._charMode = false;              // сброс режима вывода в начале каждого рендера
         if (this._scrollRafId) {
             cancelAnimationFrame(this._scrollRafId);
             this._scrollRafId = null;
         }
 
-        const lines       = content.split('\n');
-        const parserState = { disableTags: false, disableMD: false };
+        const lines = content.split('\n');
+        const parserState = {disableTags: false, disableMD: false};
 
-        let currentTable    = null;
-        let currentQuote    = null;
+        let currentTable = null;
+        let currentQuote = null;
         let currentFootnote = null;
-        let currentList     = null;
+        let currentList = null;
 
         this._resetTheme();
-
-        // Маркер начала документа
-        const startLine = document.createElement('div');
-        startLine.classList.add('doc-line');
-        startLine.appendChild(Object.assign(document.createElement('span'), { textContent: '[НАЧАЛО ДОКУМЕНТА]' }));
-        output.appendChild(startLine);
-
+        if (renderStartEnd) {
+            // Маркер начала документа
+            const startLine = document.createElement('div');
+            startLine.classList.add('doc-line');
+            startLine.appendChild(Object.assign(document.createElement('span'), {textContent: '[НАЧАЛО ДОКУМЕНТА]'}));
+            output.appendChild(startLine);
+        }
         try {
             for (let line of lines) {
                 line = line.trim();
@@ -694,7 +695,6 @@ class StepRenderer {
                     temp.innerHTML = html;
                     Array.from(temp.childNodes).forEach(n => el.appendChild(this._wrapWords(n)));
                 }
-
                 targetContainer.appendChild(el);
                 await this._animateElement(el);
             }
@@ -704,12 +704,13 @@ class StepRenderer {
             
             return;
         }
-
-        // Маркер конца документа
-        const endLine = document.createElement('div');
-        endLine.classList.add('doc-line');
-        endLine.appendChild(Object.assign(document.createElement('span'), { textContent: '[КОНЕЦ ДОКУМЕНТА]' }));
-        output.appendChild(endLine);
-        output.scrollTop = output.scrollHeight;
+        if (renderStartEnd) {
+            // Маркер конца документа
+            const endLine = document.createElement('div');
+            endLine.classList.add('doc-line');
+            endLine.appendChild(Object.assign(document.createElement('span'), {textContent: '[КОНЕЦ ДОКУМЕНТА]'}));
+            output.appendChild(endLine);
+            output.scrollTop = output.scrollHeight;
+        }
     }
 }
