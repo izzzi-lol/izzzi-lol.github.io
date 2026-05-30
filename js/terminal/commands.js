@@ -29,8 +29,9 @@ const CommandHandler = {
                 terminal.printSystem("    Записи хранятся в папке echoes/. Пример: echo 01");
                 terminal.printSystem(" ");
                 terminal.printSystem("  UPLOAD", 'var(--terminal-green)');
-                terminal.printSystem("    Загрузка локального досье (.txt) с изображениями");
+                terminal.printSystem("    Загрузка и демонстрация локального досье (.txt) с изображениями");
                 terminal.printSystem("    и/или аудиозаписью (.mp3) прямо из файловой системы.");
+                terminal.printSystem("    ВНИМАНИЕ! Ваше досье никак не загружается на сайт! Подробности внизу!");
                 terminal.printSystem(" ");
                 terminal.printSystem("  CLEAR", 'var(--terminal-green)');
                 terminal.printSystem("    Очистка экрана терминала.");
