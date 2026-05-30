@@ -300,7 +300,18 @@ _курсив_
 ```
 [BGCOLOR=#1a0a00]ЗАСЕКРЕЧЕНО[/BGCOLOR]
 ```
+### `[SIZE=N]...[/SIZE]` — размер текста
 
+Меняется размер текста.
+```
+[SIZE=12]Маленький текст[/SIZE]
+[SIZE=64]ОГРОМНЫЙ ТЕКСТ![/SIZE]
+```
+
+```
+[EFFECT=GLITCH;INTENSIVE=0.5]СИГНАЛ ИСКАЖЁН[/EFFECT]
+[EFFECT=GLITCH;INTENSIVE=1.5]КРИТИЧЕСКАЯ ОШИБКА[/EFFECT]
+```
 ### `[EFFECT=GLITCH;INTENSIVE=N]...[/EFFECT]` — глитч
 
 Текст «ломается» с глитч-анимацией. `INTENSIVE` от `0.1` (слабо) до `2.0` (хаос).
