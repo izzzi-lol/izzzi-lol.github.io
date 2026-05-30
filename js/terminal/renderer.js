@@ -388,22 +388,17 @@ class StepRenderer {
      * После анимации заменяет все <span class="word"> обратно на текстовые узлы.
      * Резко снижает количество DOM-узлов — с тысяч до единиц.
      */
-    /**
-     * После анимации убирает обёрточные <span class="word">.
-     * Если внутри спана только текст — заменяем на текстовый узел.
-     * Если внутри есть дочерние элементы (глитч, ссылка, CMD) —
-     *   вставляем дочерние узлы на место спана, сохраняя их живыми.
-     */
     _unwrapWords(el) {
         el.querySelectorAll('.word').forEach(span => {
             if (span.childElementCount === 0) {
-                // Чистый текст — просто текстовый узел
+                // Чистый текст — заменяем на текстовый узел (оптимизация DOM)
                 span.replaceWith(document.createTextNode(span.textContent));
             } else {
-                // Внутри элементы (глитч, <a>, CMD) — вставляем их на место спана
-                const frag = document.createDocumentFragment();
-                while (span.firstChild) frag.appendChild(span.firstChild);
-                span.replaceWith(frag);
+                // Внутри живые элементы (глитч, ссылки, CMD) —
+                // НЕ двигаем из DOM — иначе браузер сбросит CSS-анимацию глитча.
+                // Просто снимаем служебные классы и фиксируем видимость на месте.
+                span.classList.remove('word', 'revealed');
+                span.style.cssText = 'opacity:1; display:inline; background:transparent;';
             }
         });
         el.normalize();
