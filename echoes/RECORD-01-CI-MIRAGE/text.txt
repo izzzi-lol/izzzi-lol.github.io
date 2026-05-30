@@ -19,7 +19,7 @@
 - [SCROLLSPEED=0]████████:[SCROLLSPEED=50] Любопытно.[TIMER=1] И откуда у вас эта информация?[TIMER=1]
 - [SCROLLSPEED=0]«Мираж»:[SCROLLSPEED=50] Пока мы сидим здесь наедине, ваш терминал за вашей спиной [EFFECT=GLITCH;INTENSIVE=0.5]буквально кричит мне всё о вашем прошлом[/EFFECT],[TIMER=3] «Кандидат».[TIMER=2] Так что там насчет вашего предложения?[TIMER=1]
 - [SCROLLSPEED=0]████████:[SCROLLSPEED=50] Ближе к теме. [TIMER=0.25][SCROLLSPEED=0][Слышно, как по столу пододвигают плотный лист бумаги][SCROLLSPEED=50][TIMER=1] Здесь базовые тезисы нашей структуры.[TIMER=0.5] Вы можете стать неотъемлемым инструментом в этом механизме.[TIMER=1] Вы принесли хаос в свой мир — помогите нам сокрушить ложный порядок в этом.[TIMER=1.5]
-- [SCROLLSPEED=0]«Мираж»:[SCROLLSPEED=150] Хах... [SCROLLSPEED=100][EFFECT=GLITCH;INTENSIVE=0.4]Ха-ха-ха...[/EFFECT] [TIMER=3][EFFECT=GLITCH;INTENSIVE=1]ХА-ХА-ХА-ХА-ХА![/EFFECT] [TIMER=3][EFFECT=GLITCH;INTENSIVE=1]ВЫ ЕЩЕ И ИДЕОЛОГИЧЕСКИЕ![/EFFECT][TIMER=4]
+- [SCROLLSPEED=0]«Мираж»:[SCROLLSPEED=150] Хах... [SCROLLSPEED=100][EFFECT=GLITCH;INTENSIVE=0.4]Ха-ха-ха...[/EFFECT] [TIMER=2.5][EFFECT=GLITCH;INTENSIVE=1]ХА-ХА-ХА-ХА-ХА![/EFFECT] [TIMER=3][EFFECT=GLITCH;INTENSIVE=1]ВЫ ЕЩЕ И ИДЕОЛОГИЧЕСКИЕ![/EFFECT][TIMER=4]
 - [SCROLLSPEED=0]«Мираж»:[SCROLLSPEED=50] А вы забавные ребята.[TIMER=1] Искать таких безумцев — одно удовольствие.[TIMER=1] Вы мне определенно начинаете нравиться, Мистер Повстанец.[TIMER=1]
 - [SCROLLSPEED=0]████████:[SCROLLSPEED=50] Значит[SCROLLSPEED=200]...[SCROLLSPEED=50] мы пришли к соглашению?[TIMER=1]
 - [SCROLLSPEED=0]«Мираж»:[SCROLLSPEED=75] Думаю, мы поняли друг друга.
