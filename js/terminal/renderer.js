@@ -25,6 +25,13 @@ class StepRenderer {
         this._skip        = false;  // Флаг мгновенного вывода (skip-to-end)
         this._charMode    = false;  // Флаг посимвольного вывода ([CHARMODE]/[WORDMODE])
         this._scrollRafId = null;   // RAF-handle для debounced-scroll
+        // Самокорректирующийся таймер: компенсирует накопленный drift setTimeout.
+        // _clockStart  — performance.now() в момент старта render().
+        // _clockExpected — сколько мс должно было пройти по «идеальным» задержкам.
+        // Разница (_clockExpected - elapsed) — остаток для следующего setTimeout.
+        // Если event loop опаздывал, corrected < ms, тем самым долг гасится.
+        this._clockStart    = 0;
+        this._clockExpected = 0;
     }
 
     /**
@@ -58,7 +65,16 @@ class StepRenderer {
     }
 
     /**
-     * Пауза с поддержкой AbortSignal.
+     * Пауза с поддержкой AbortSignal и автокоррекцией drift.
+     *
+     * setTimeout не гарантирует точное время — он срабатывает *не раньше* чем
+     * через N мс, но может позже (занятый event loop, тяжёлый DOM).
+     * При CHARMODE это тысячи вызовов, каждый +1–3 мс → итого секунды рассинхрона.
+     *
+     * Фикс: ведём «идеальные часы» (_clockExpected) и вычитаем накопленный drift
+     * из каждого следующего таймаута. Если отстали — паузы сжимаются и долг гасится.
+     * Если вдруг опередили (маловероятно) — пауза растягивается, не ломая поток.
+     *
      * Бросает DOMException('AbortError') если воспроизведение отменено.
      */
     _delay(ms) {
@@ -68,7 +84,12 @@ class StepRenderer {
             }
             // В режиме skip все задержки обнуляются — текст выводится мгновенно
             if (this._skip) return resolve();
-            const id = setTimeout(resolve, ms);
+
+            this._clockExpected += ms;
+            const elapsed   = performance.now() - this._clockStart;
+            const corrected = Math.max(0, this._clockExpected - elapsed);
+
+            const id = setTimeout(resolve, corrected);
             this.signal?.addEventListener('abort', () => {
                 clearTimeout(id);
                 reject(new DOMException('Aborted', 'AbortError'));
@@ -129,18 +150,19 @@ class StepRenderer {
     _findMatchingClose(text, tagName, fromPos) {
         const tn       = tagName.toLowerCase();
         const closeStr = `[/${tn}]`;
+        const openStr  = `[${tn}`;
+        const ltext    = text.toLowerCase(); // вычисляем один раз, не в каждой итерации
         let depth = 1;
         let pos   = fromPos;
 
         while (pos < text.length) {
-            const ltext        = text.toLowerCase();
             const nextCloseIdx = ltext.indexOf(closeStr, pos);
             if (nextCloseIdx === -1) return -1;
 
             let openIdx    = -1;
             let searchFrom = pos;
             while (searchFrom < nextCloseIdx) {
-                const idx = ltext.indexOf(`[${tn}`, searchFrom);
+                const idx = ltext.indexOf(openStr, searchFrom);
                 if (idx === -1 || idx >= nextCloseIdx) break;
                 const charAfter = ltext[idx + 1 + tn.length];
                 if (charAfter === ']' || charAfter === '=') { openIdx = idx; break; }
@@ -461,20 +483,35 @@ class StepRenderer {
      */
     async render(content, output, basePath, localImageMap = {}, renderStartEnd = true) {
         this._output = output;
-        this.currentSpeed = this.defaultSpeed;  // сброс скорости в начале каждого рендера
-        this._charMode = false;              // сброс режима вывода в начале каждого рендера
+        this.currentSpeed = this.defaultSpeed;
+        this._charMode = false;
         if (this._scrollRafId) {
             cancelAnimationFrame(this._scrollRafId);
             this._scrollRafId = null;
         }
+        // Обнуляем самокорректирующиеся часы при каждом новом render().
+        // Оба поля должны сбрасываться вместе — иначе drift от предыдущего
+        // рендера «протечёт» в следующий и первые паузы окажутся слишком короткими.
+        this._clockStart    = performance.now();
+        this._clockExpected = 0;
 
         const lines = content.split('\n');
         const parserState = {disableTags: false, disableMD: false};
 
-        let currentTable = null;
-        let currentQuote = null;
+        let currentTable    = null;
+        let currentQuote    = null;
         let currentFootnote = null;
-        let currentList = null;
+        let currentList     = null;
+
+        // Регулярки вынесены за пределы цикла — не пересоздаются на каждой строке
+        const RE_SPEED    = /^\[SCROLLSPEED=([0-9.]+)\]$/i;
+        const RE_TIMER    = /^\[TIMER=([0-9.]+)\]$/i;
+        const RE_CHARMODE = /^\[CHARMODE\]$/i;
+        const RE_WORDMODE = /^\[WORDMODE\]$/i;
+        const RE_H1       = /^\[H1\]|^#(?!#)/i;
+        const RE_H2       = /^\[H2\]|^##(?!#)/i;
+        const RE_H3       = /^\[H3\]|^###/i;
+        const RE_LIST     = /^[-*]\s+/;
 
         this._resetTheme();
         if (renderStartEnd) {
@@ -492,27 +529,21 @@ class StepRenderer {
                 // ── !COM — комментарий, строка полностью игнорируется ─────────
                 //    Пример: !COM Это служебная заметка, игрок её не увидит
                 if (line.startsWith('!COM')) continue;
-                //    Пример: [SCROLLSPEED=15]  → быстро
-                //            [SCROLLSPEED=120] → медленно, атмосферно
-                const speedMatch = line.match(/^\[SCROLLSPEED=([0-9.]+)\]$/i);
+
+                const speedMatch = RE_SPEED.exec(line);
                 if (speedMatch) {
                     this.currentSpeed = Math.max(1, parseFloat(speedMatch[1]));
                     continue;
                 }
 
-                // ── [TIMER=с] — пауза N секунд (дробные значения OK) ─────────
-                //    Пример: [TIMER=1.5]  → пауза 1.5 секунды
-                const timerMatch = line.match(/^\[TIMER=([0-9.]+)\]$/i);
+                const timerMatch = RE_TIMER.exec(line);
                 if (timerMatch) {
                     await this._delay(parseFloat(timerMatch[1]) * 1000);
                     continue;
                 }
 
-                // ── [CHARMODE] / [WORDMODE] — режим анимации ─────────────────
-                //    [CHARMODE] → посимвольный вывод
-                //    [WORDMODE] → пословный вывод (по умолчанию)
-                if (line.match(/^\[CHARMODE\]$/i)) { this._charMode = true;  continue; }
-                if (line.match(/^\[WORDMODE\]$/i)) { this._charMode = false; continue; }
+                if (RE_CHARMODE.test(line)) { this._charMode = true;  continue; }
+                if (RE_WORDMODE.test(line)) { this._charMode = false; continue; }
 
                 // ── [COLORCODES] — переопределение цветовой темы ─────────────
                 if (line.startsWith('[COLORCODES]')) {
@@ -616,7 +647,7 @@ class StepRenderer {
                                     }
                                     w.classList.add('revealed');
                                     await this._delay(this.currentSpeed);
-                                    output.scrollTop = output.scrollHeight;
+                                    this._scheduleScroll();
                                 }
                                 // Анимация строки завершена — чистим спаны
                                 await this._delay(190);
@@ -693,7 +724,10 @@ class StepRenderer {
                     const html = this._applyInlineMarkdown(line, parserState);
                     const temp = document.createElement('div');
                     temp.innerHTML = html;
-                    Array.from(temp.childNodes).forEach(n => el.appendChild(this._wrapWords(n)));
+                    // Используем фрагмент чтобы избежать лишних reflow при вставке узлов
+                    const frag = document.createDocumentFragment();
+                    temp.childNodes.forEach(n => frag.appendChild(this._wrapWords(n)));
+                    el.appendChild(frag);
                 }
                 targetContainer.appendChild(el);
                 await this._animateElement(el);
@@ -709,7 +743,7 @@ class StepRenderer {
             endLine.classList.add('doc-line');
             endLine.appendChild(Object.assign(document.createElement('span'), {textContent: '[КОНЕЦ ДОКУМЕНТА]'}));
             output.appendChild(endLine);
-            output.scrollTop = output.scrollHeight;
+            this._scheduleScroll();
         }
         this._skip = false;
     }
