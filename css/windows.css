@@ -1,0 +1,235 @@
+/* ============================================================
+   LYOKO WINDOW MANAGER — Code Lyoko Supercomputer aesthetic
+   ============================================================ */
+
+/* Слой окон поверх терминала, под auth/splash */
+#wm-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none; /* клики проходят насквозь когда нет окон */
+    z-index: 500;
+}
+
+/* ── Одно окно ─────────────────────────────────────────────── */
+.lyoko-window {
+    position: absolute;
+    pointer-events: all;
+    display: flex;
+    flex-direction: column;
+    min-width: 280px;
+    min-height: 140px;
+
+    /* Фон с лёгкой сеткой внутри */
+    background:
+        linear-gradient(rgba(0,200,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,200,255,0.025) 1px, transparent 1px),
+        rgba(4, 12, 24, 0.97);
+    background-size: 24px 24px, 24px 24px, auto;
+
+    border: 1px solid rgba(0, 255, 65, 0.35);
+    box-shadow:
+        0 0 0 1px rgba(0, 255, 65, 0.08),
+        0 0 24px rgba(0, 255, 65, 0.12),
+        0 8px 40px rgba(0, 0, 0, 0.7),
+        inset 0 0 40px rgba(0, 255, 65, 0.03);
+
+    font-family: 'JetBrains Mono', monospace;
+    color: #c8e8ff;
+    user-select: none;
+
+    will-change: transform, opacity;
+    transition: box-shadow 0.2s;
+}
+
+.lyoko-window:focus-within,
+.lyoko-window.active {
+    border-color: rgba(0, 255, 65, 0.65);
+    box-shadow:
+        0 0 0 1px rgba(0, 255, 65, 0.15),
+        0 0 32px rgba(0, 255, 65, 0.22),
+        0 12px 50px rgba(0, 0, 0, 0.75),
+        inset 0 0 60px rgba(0, 255, 65, 0.05);
+}
+
+/* ── Анимация появления (материализация) ───────────────────── */
+@keyframes lyokoMaterialize {
+    0%   { opacity: 0; transform: scale(0.88); filter: blur(6px) brightness(2); }
+    40%  { opacity: 1; transform: scale(1.02); filter: blur(0) brightness(1.3); }
+    70%  { transform: scale(0.99); filter: brightness(1); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
+
+@keyframes lyokoDematerialize {
+    0%   { opacity: 1; transform: scale(1); filter: blur(0); }
+    60%  { opacity: 0.3; transform: scale(1.04); filter: blur(3px) brightness(1.5); }
+    100% { opacity: 0; transform: scale(0.85); filter: blur(8px); }
+}
+
+.lyoko-window.materializing {
+    animation: lyokoMaterialize 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.lyoko-window.dematerializing {
+    animation: lyokoDematerialize 0.3s ease forwards;
+    pointer-events: none;
+}
+
+/* ── Тайтл-бар ─────────────────────────────────────────────── */
+.lyoko-titlebar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px 7px 14px;
+    background: linear-gradient(
+        90deg,
+        rgba(0, 255, 65, 0.12) 0%,
+        rgba(0, 200, 65, 0.06) 60%,
+        transparent 100%
+    );
+    border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+    cursor: grab;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.lyoko-titlebar:active { cursor: grabbing; }
+
+/* Мигающий индикатор слева */
+.lyoko-titlebar::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #00ccff;
+    box-shadow: 0 0 6px #00ccff, 0 0 12px #00ccff;
+    flex-shrink: 0;
+    animation: lyokoBlink 2s ease-in-out infinite;
+}
+
+@keyframes lyokoBlink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+}
+
+.lyoko-title {
+    flex: 1;
+    font-size: 0.7em;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: #7dd8ff;
+    text-shadow: 0 0 8px rgba(0, 255, 65, 0.6);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Кнопки тайтл-бара ─────────────────────────────────────── */
+.lyoko-btn {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    background: rgba(0, 180, 255, 0.08);
+    border: 1px solid rgba(0, 255, 65, 0.25);
+    color: rgba(0, 255, 65, 0.7);
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    clip-path: polygon(3px 0, 100% 0, 100% calc(100% - 3px), calc(100% - 3px) 100%, 0 100%, 0 3px);
+    line-height: 1;
+}
+
+.lyoko-btn:hover {
+    background: rgba(0, 255, 65, 0.2);
+    border-color: rgba(0, 220, 255, 0.6);
+    color: #fff;
+    box-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
+}
+
+.lyoko-btn.close:hover {
+    background: rgba(255, 50, 80, 0.2);
+    border-color: rgba(255, 50, 80, 0.6);
+    color: #ff5060;
+    box-shadow: 0 0 8px rgba(255, 50, 80, 0.4);
+}
+
+/* ── Контент окна ───────────────────────────────────────────── */
+.lyoko-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 14px 16px;
+    font-size: 0.82em;
+    line-height: 1.6;
+    color: #b0d8f0;
+    position: relative;
+    user-select: text;
+}
+
+/* Scanline поверх контента */
+.lyoko-content::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 3px,
+        rgba(0, 0, 0, 0.12) 3px,
+        rgba(0, 0, 0, 0.12) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Скроллбар в стиле Lyoko */
+.lyoko-content::-webkit-scrollbar       { width: 3px; }
+.lyoko-content::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+.lyoko-content::-webkit-scrollbar-thumb { background: rgba(0,200,255,0.4); border-radius: 2px; }
+
+/* ── Угловые декор-уголки ───────────────────────────────────── */
+.lyoko-window::before,
+.lyoko-window::after {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-color: rgba(0, 255, 65, 0.8);
+    border-style: solid;
+    pointer-events: none;
+    z-index: 2;
+}
+.lyoko-window::before { bottom: 6px; left: 6px;  border-width: 0 0 1px 1px; }
+.lyoko-window::after  { bottom: 6px; right: 6px; border-width: 0 1px 1px 0; }
+
+/* Нижняя строка статуса */
+.lyoko-statusbar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 12px;
+    border-top: 1px solid rgba(0, 255, 65, 0.12);
+    background: rgba(0, 180, 255, 0.04);
+    font-size: 0.58em;
+    letter-spacing: 1.5px;
+    color: rgba(0, 255, 65, 0.35);
+}
+
+/* ── Оверлей затемнения (опционально) ───────────────────────── */
+#wm-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(2px);
+    z-index: 499;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+#wm-backdrop.visible {
+    opacity: 1;
+    pointer-events: all;
+}
