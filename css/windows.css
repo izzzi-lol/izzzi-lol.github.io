@@ -1,12 +1,13 @@
 /* ============================================================
    LYOKO WINDOW MANAGER — Code Lyoko Supercomputer aesthetic
+   Balanced green palette
    ============================================================ */
 
 /* Слой окон поверх терминала, под auth/splash */
 #wm-layer {
     position: fixed;
     inset: 0;
-    pointer-events: none; /* клики проходят насквозь когда нет окон */
+    pointer-events: none;
     z-index: 500;
 }
 
@@ -17,24 +18,23 @@
     display: flex;
     flex-direction: column;
     min-width: 280px;
-    min-height: 140px;
+    min-height: 0;
 
-    /* Фон с лёгкой сеткой внутри */
     background:
-        linear-gradient(rgba(0,200,255,0.025) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,200,255,0.025) 1px, transparent 1px),
-        rgba(4, 12, 24, 0.97);
+        linear-gradient(rgba(0,180,80,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,180,80,0.025) 1px, transparent 1px),
+        rgba(3, 12, 7, 0.97);
     background-size: 24px 24px, 24px 24px, auto;
 
-    border: 1px solid rgba(0, 255, 65, 0.35);
+    border: 1px solid rgba(0, 200, 100, 0.35);
     box-shadow:
-        0 0 0 1px rgba(0, 255, 65, 0.08),
-        0 0 24px rgba(0, 255, 65, 0.12),
+        0 0 0 1px rgba(0, 200, 100, 0.08),
+        0 0 24px rgba(0, 200, 100, 0.12),
         0 8px 40px rgba(0, 0, 0, 0.7),
-        inset 0 0 40px rgba(0, 255, 65, 0.03);
+        inset 0 0 40px rgba(0, 200, 100, 0.03);
 
     font-family: 'JetBrains Mono', monospace;
-    color: #c8e8ff;
+    color: #aee8c4;
     user-select: none;
 
     will-change: transform, opacity;
@@ -43,35 +43,33 @@
 
 .lyoko-window:focus-within,
 .lyoko-window.active {
-    border-color: rgba(0, 255, 65, 0.65);
+    border-color: rgba(0, 200, 100, 0.65);
     box-shadow:
-        0 0 0 1px rgba(0, 255, 65, 0.15),
-        0 0 32px rgba(0, 255, 65, 0.22),
+        0 0 0 1px rgba(0, 200, 100, 0.15),
+        0 0 32px rgba(0, 200, 100, 0.22),
         0 12px 50px rgba(0, 0, 0, 0.75),
-        inset 0 0 60px rgba(0, 255, 65, 0.05);
+        inset 0 0 60px rgba(0, 200, 100, 0.05);
 }
 
-/* ── Анимация появления (материализация) ───────────────────── */
-@keyframes lyokoMaterialize {
-    0%   { opacity: 0; transform: scale(0.88); filter: blur(6px) brightness(2); }
-    40%  { opacity: 1; transform: scale(1.02); filter: blur(0) brightness(1.3); }
-    70%  { transform: scale(0.99); filter: brightness(1); }
-    100% { transform: scale(1); filter: brightness(1); }
+/* ── Flash: яркий белый прямоугольник при появлении/исчезновении ─── */
+/* Дочерние элементы скрыты — видна только светящаяся рамка.         */
+.lyoko-window.wm-flash {
+    background: #edfff4 !important;
+    border-color: #edfff4 !important;
+    box-shadow:
+        0 0 0 3px rgba(220, 255, 240, 0.9),
+        0 0 40px rgba(160, 255, 200, 0.6),
+        0 0 80px rgba(80,  220, 140, 0.3),
+        0 8px 40px rgba(0, 0, 0, 0.4) !important;
+    transition: none !important;
 }
 
-@keyframes lyokoDematerialize {
-    0%   { opacity: 1; transform: scale(1); filter: blur(0); }
-    60%  { opacity: 0.3; transform: scale(1.04); filter: blur(3px) brightness(1.5); }
-    100% { opacity: 0; transform: scale(0.85); filter: blur(8px); }
-}
-
-.lyoko-window.materializing {
-    animation: lyokoMaterialize 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-.lyoko-window.dematerializing {
-    animation: lyokoDematerialize 0.3s ease forwards;
-    pointer-events: none;
+/* Скрываем всё содержимое окна во время вспышки */
+.lyoko-window.wm-flash > *,
+.lyoko-window.wm-flash::before,
+.lyoko-window.wm-flash::after {
+    opacity: 0 !important;
+    transition: none !important;
 }
 
 /* ── Тайтл-бар ─────────────────────────────────────────────── */
@@ -82,11 +80,11 @@
     padding: 7px 12px 7px 14px;
     background: linear-gradient(
         90deg,
-        rgba(0, 255, 65, 0.12) 0%,
-        rgba(0, 200, 65, 0.06) 60%,
+        rgba(0, 200, 100, 0.12) 0%,
+        rgba(0, 160, 80,  0.06) 60%,
         transparent 100%
     );
-    border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+    border-bottom: 1px solid rgba(0, 200, 100, 0.2);
     cursor: grab;
     flex-shrink: 0;
     position: relative;
@@ -100,8 +98,8 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #00ccff;
-    box-shadow: 0 0 6px #00ccff, 0 0 12px #00ccff;
+    background: #00bb58;
+    box-shadow: 0 0 6px #00bb58, 0 0 12px #00bb58;
     flex-shrink: 0;
     animation: lyokoBlink 2s ease-in-out infinite;
 }
@@ -116,8 +114,8 @@
     font-size: 0.7em;
     letter-spacing: 2.5px;
     text-transform: uppercase;
-    color: #7dd8ff;
-    text-shadow: 0 0 8px rgba(0, 255, 65, 0.6);
+    color: #6ddc9c;
+    text-shadow: 0 0 8px rgba(0, 200, 100, 0.6);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -128,9 +126,9 @@
     width: 22px;
     height: 22px;
     flex-shrink: 0;
-    background: rgba(0, 180, 255, 0.08);
-    border: 1px solid rgba(0, 255, 65, 0.25);
-    color: rgba(0, 255, 65, 0.7);
+    background: rgba(0, 160, 80, 0.08);
+    border: 1px solid rgba(0, 200, 100, 0.25);
+    color: rgba(0, 200, 100, 0.7);
     font-size: 10px;
     display: flex;
     align-items: center;
@@ -142,10 +140,10 @@
 }
 
 .lyoko-btn:hover {
-    background: rgba(0, 255, 65, 0.2);
-    border-color: rgba(0, 220, 255, 0.6);
+    background: rgba(0, 200, 100, 0.2);
+    border-color: rgba(0, 180, 100, 0.6);
     color: #fff;
-    box-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
+    box-shadow: 0 0 8px rgba(0, 200, 100, 0.4);
 }
 
 .lyoko-btn.close:hover {
@@ -155,15 +153,35 @@
     box-shadow: 0 0 8px rgba(255, 50, 80, 0.4);
 }
 
+/* ── Content wrapper: grid-trick для slide-анимации ────────── */
+/*                                                               */
+/*  grid-template-rows: 1fr  →  контент виден (естественная в.) */
+/*  grid-template-rows: 0fr  →  контент схлопнут в 0            */
+/*  overflow: hidden          →  обрезает контент во время анима.*/
+/*                                                               */
+/*  ВАЖНО: .lyoko-content должен иметь min-height:0 —           */
+/*  иначе 0fr не сработает (grid не может сжать элемент ниже    */
+/*  его min-height по умолчанию = auto).                         */
+.lyoko-content-wrapper {
+    display: grid;
+    grid-template-rows: 1fr;
+    overflow: hidden;
+    transition: grid-template-rows 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lyoko-content-wrapper.collapsed {
+    grid-template-rows: 0fr;
+}
+
 /* ── Контент окна ───────────────────────────────────────────── */
 .lyoko-content {
-    flex: 1;
+    min-height: 0;          /* обязательно для 0fr grid-trick */
     overflow-y: auto;
     overflow-x: hidden;
     padding: 14px 16px;
     font-size: 0.82em;
     line-height: 1.6;
-    color: #b0d8f0;
+    color: #9ed4b4;
     position: relative;
     user-select: text;
 }
@@ -184,10 +202,10 @@
     z-index: 1;
 }
 
-/* Скроллбар в стиле Lyoko */
+/* Скроллбар */
 .lyoko-content::-webkit-scrollbar       { width: 3px; }
 .lyoko-content::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
-.lyoko-content::-webkit-scrollbar-thumb { background: rgba(0,200,255,0.4); border-radius: 2px; }
+.lyoko-content::-webkit-scrollbar-thumb { background: rgba(0,180,80,0.4); border-radius: 2px; }
 
 /* ── Угловые декор-уголки ───────────────────────────────────── */
 .lyoko-window::before,
@@ -196,7 +214,7 @@
     position: absolute;
     width: 8px;
     height: 8px;
-    border-color: rgba(0, 255, 65, 0.8);
+    border-color: rgba(0, 200, 100, 0.8);
     border-style: solid;
     pointer-events: none;
     z-index: 2;
@@ -204,18 +222,18 @@
 .lyoko-window::before { bottom: 6px; left: 6px;  border-width: 0 0 1px 1px; }
 .lyoko-window::after  { bottom: 6px; right: 6px; border-width: 0 1px 1px 0; }
 
-/* Нижняя строка статуса */
+/* ── Нижняя строка статуса ──────────────────────────────────── */
 .lyoko-statusbar {
     flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 4px 12px;
-    border-top: 1px solid rgba(0, 255, 65, 0.12);
-    background: rgba(0, 180, 255, 0.04);
+    border-top: 1px solid rgba(0, 200, 100, 0.12);
+    background: rgba(0, 160, 80, 0.04);
     font-size: 0.58em;
     letter-spacing: 1.5px;
-    color: rgba(0, 255, 65, 0.35);
+    color: rgba(0, 200, 100, 0.35);
 }
 
 /* ── Оверлей затемнения (опционально) ───────────────────────── */
