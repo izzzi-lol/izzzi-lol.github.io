@@ -123,11 +123,20 @@ const CmdEcho = {
         }
 
         // 2. Создаём аудиоэлемент
-        const audio        = new Audio(`${ECHOES_ROOT}/${id}/audio.mp3`);
-        audio.preload      = 'auto';
-        audio.volume = 0.75;
-        this._currentAudio = audio;
-
+		const audioResp = await fetch(`${GITHUB_BASE}/${ECHOES_ROOT}/${id}/audio.mp3?ref=DossiersBase`, {
+			headers: {
+				'Accept': 'application/vnd.github.v3.raw',
+				// 'Authorization': `Bearer ${YOUR_TOKEN}` // Раскомментируйте, если репозиторий приватный
+			}
+		});
+		const audioBlob = await audioResp.blob();
+		const audioUrl = URL.createObjectURL(audioBlob);
+		
+		const audio        = new Audio(audioUrl);
+		audio.preload      = 'auto';
+		audio.volume       = 0.75;
+		this._currentAudio = audio;
+		
         // 3. StepRenderer (без AbortSignal — текст всегда доходит до конца)
         this._currentRenderer = renderer;
 
@@ -140,6 +149,7 @@ const CmdEcho = {
                 this._interrupt();
             }
         };
+		// const CherrySan.status = StatusType.FEMBOI;
         window.addEventListener('keydown', onKeyDown, {capture: true});
 
         // 5. Запускаем аудио
