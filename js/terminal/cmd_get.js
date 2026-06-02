@@ -54,7 +54,7 @@ const CmdGet = {
             // sessionStorage недоступен — просто игнорируем
         }
 
-        const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${DOSSIERS_ROOT}?ref=DossiersBase`;
+        const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${DOSSIERS_ROOT}`;
 
         try {
             const response = await fetch(url, { headers: this._apiHeaders() });
