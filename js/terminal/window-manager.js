@@ -156,14 +156,14 @@ const WindowManager = (() => {
         wrapper.classList.add('collapsed');
 
         // 2. Накладываем белую вспышку поверх
-        win.classList.add('wm-flash');
+        win.classList.add('wm-flash-in');
 
         // Ждём два кадра — гарантируем, что браузер отрисовал оба состояния
         await _raf(); await _raf();
         await _sleep(55);
 
         // 3. Убираем flash → видны только TitleBar + StatusBar (контент скрыт)
-        win.classList.remove('wm-flash');
+        win.classList.remove('wm-flash-in');
 
         await _sleep(28);
 
@@ -184,11 +184,9 @@ const WindowManager = (() => {
         // 1. Контент схлопывается слайдером вверх (CSS grid transition, 0.38s)
         wrapper.classList.add('collapsed');
         await _sleep(410); // чуть больше 380 мс transition
+        win.classList.add('wm-flash-out');
 
         // 2. Белая вспышка — окно вспыхивает белым прямоугольником
-        win.classList.add('wm-flash');
-        await _sleep(65);
-        win.classList.remove('wm-flash');
         await _sleep(12);
 
         // 3. Окно схлопывается по ширине (scaleX: 1 → 0)

@@ -53,21 +53,47 @@
 
 /* ── Flash: яркий белый прямоугольник при появлении/исчезновении ─── */
 /* Дочерние элементы скрыты — видна только светящаяся рамка.         */
-.lyoko-window.wm-flash {
-    background: #edfff4 !important;
-    border-color: #edfff4 !important;
-    box-shadow:
-        0 0 0 3px rgba(220, 255, 240, 0.9),
-        0 0 40px rgba(160, 255, 200, 0.6),
-        0 0 80px rgba(80,  220, 140, 0.3),
-        0 8px 40px rgba(0, 0, 0, 0.4) !important;
+
+/* Вспышка при ОТКРЫТИИ: яркая → нормальное окно */
+@keyframes lyokoFlashOpen {
+    0%   { background: #edfff4;
+        box-shadow: 0 0 0 3px rgba(220,255,240,0.9),
+        0 0 80px rgba(80,220,140,0.6); }
+    100% { background: rgba(4,12,24,0.97);
+        box-shadow: 0 0 24px rgba(0,200,255,0.12); }
+}
+
+/* Вспышка при ЗАКРЫТИИ: нормальное → яркая → исчезает */
+@keyframes lyokoFlashClose {
+    0%   { background: rgba(4,12,24,0.97); opacity: 1; }
+    50%  { background: #edfff4;
+        box-shadow: 0 0 0 3px rgba(220,255,240,0.9),
+        0 0 80px rgba(80,220,140,0.6);
+        opacity: 1; }
+    100% { background: #edfff4; opacity: 0; border-color: #ffffff; }
+}
+
+.lyoko-window.wm-flash-in {
+    animation: lyokoFlashOpen 0.45s ease-out forwards;
+}
+
+.lyoko-window.wm-flash-out {
+    animation: lyokoFlashClose 0.3s ease-in forwards;
+    pointer-events: none;
+}
+
+/* Скрываем всё содержимое окна во время вспышки */
+.lyoko-window.wm-flash-in > *,
+.lyoko-window.wm-flash-in::before,
+.lyoko-window.wm-flash-in::after {
+    opacity: 0 !important;
     transition: none !important;
 }
 
 /* Скрываем всё содержимое окна во время вспышки */
-.lyoko-window.wm-flash > *,
-.lyoko-window.wm-flash::before,
-.lyoko-window.wm-flash::after {
+.lyoko-window.wm-flash-out > *,
+.lyoko-window.wm-flash-out::before,
+.lyoko-window.wm-flash-out::after {
     opacity: 0 !important;
     transition: none !important;
 }
