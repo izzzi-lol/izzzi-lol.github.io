@@ -15,7 +15,9 @@
 //    — текст домативается до конца мгновенно (skip-to-end)
 // =============================================================================
 
-const ECHOES_ROOT = "echoes";
+const ECHOES_ROOT    = "echoes";
+const ECHOES_BRANCH  = "DossiersBase";   // Бранч, где хранятся записи
+const ECHO_RAW_BASE  = `https://raw.githubusercontent.com/izzzi-lol/izzzi-lol.github.io/${ECHOES_BRANCH}`;
 
 // ─── Инжект CSS баннера (один раз) ───────────────────────────────────────────
 (function _injectEchoBannerStyles() {
@@ -107,7 +109,7 @@ const CmdEcho = {
         // 1. Загружаем текст
         let textContent;
         try {
-            const textResp = await fetch(`${ECHOES_ROOT}/${id}/text.txt`);
+            const textResp = await fetch(`${ECHO_RAW_BASE}/${ECHOES_ROOT}/${id}/text.txt`);
             if (!textResp.ok) {
                 terminal.printError(
                     textResp.status === 404
@@ -123,7 +125,7 @@ const CmdEcho = {
         }
 
         // 2. Создаём аудиоэлемент
-        const audio        = new Audio(`${ECHOES_ROOT}/${id}/audio.mp3`);
+        const audio        = new Audio(`${ECHO_RAW_BASE}/${ECHOES_ROOT}/${id}/audio.mp3`);
         audio.preload      = 'auto';
         audio.volume = 0.75;
         this._currentAudio = audio;
@@ -155,7 +157,7 @@ const CmdEcho = {
         terminal.printSystem(`— НАЧАЛО ЗАПИСИ ${id.toUpperCase()} —`);
         await new Promise(r => setTimeout(r, 20));
 		try {
-        	await renderer.render(textContent, outputContainer, `${ECHOES_ROOT}/${id}/`);
+        	await renderer.render(textContent, outputContainer, `${ECHO_RAW_BASE}/${ECHOES_ROOT}/${id}/`);
 		} finally {	
             banner.remove();
             window.removeEventListener('keydown', onKeyDown, { capture: true });

@@ -4,9 +4,13 @@
 //  Рендер делегируется StepRenderer из renderer.js.
 // =============================================================================
 
-const GITHUB_USER   = "izzzi-lol";           // Ваш GitHub username
-const GITHUB_REPO   = "izzzi-lol.github.io"; // Ваш репозиторий
-const DOSSIERS_ROOT = "dossiers";             // Папка с досье в репозитории
+const GITHUB_USER    = "izzzi-lol";           // Ваш GitHub username
+const GITHUB_REPO    = "izzzi-lol.github.io"; // Ваш репозиторий
+const DOSSIERS_ROOT  = "dossiers";             // Папка с досье в репозитории
+const DOSSIERS_BRANCH = "DossiersBase";        // Бранч, где хранятся досье
+
+// Базовый URL для загрузки сырых файлов с нужного бранча
+const RAW_BASE = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${DOSSIERS_BRANCH}`;
 
 // Токен хранится в двойном base64 — не идеальная защита, но лучше, чем plaintext.
 // В продакшене лучше проксировать через свой backend.
@@ -54,7 +58,7 @@ const CmdGet = {
             // sessionStorage недоступен — просто игнорируем
         }
 
-        const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${DOSSIERS_ROOT}?ref=DossiersBase`;
+        const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${DOSSIERS_ROOT}?ref=${DOSSIERS_BRANCH}`;
 
         try {
             const response = await fetch(url, { headers: this._apiHeaders() });
@@ -137,7 +141,7 @@ const CmdGet = {
             const exactId = folderIds.find(id => id.toLowerCase() === query);
 
             if (exactId) {
-                const docResponse = await fetch(`${DOSSIERS_ROOT}/${exactId}/dossier.txt`);
+                const docResponse = await fetch(`${RAW_BASE}/${DOSSIERS_ROOT}/${exactId}/dossier.txt`);
                 if (docResponse.ok) {
                     terminal.printSystem("ДОКУМЕНТ ПО ID НАЙДЕН.");
                     await new Promise(r => setTimeout(r, 20));
@@ -151,7 +155,7 @@ const CmdGet = {
             const matches = [];
 
             for (const id of folderIds) {
-                const docResponse = await fetch(`${DOSSIERS_ROOT}/${id}/dossier.txt`);
+                const docResponse = await fetch(`${RAW_BASE}/${DOSSIERS_ROOT}/${id}/dossier.txt`);
                 if (!docResponse.ok) continue;
 
                 const content = await docResponse.text();
@@ -261,8 +265,11 @@ const CmdGet = {
         };
         document.addEventListener('keydown', onKeyDown);
 
+        // Изображения берём с нужного бранча через raw URL
+        const imageBase = `${RAW_BASE}/${DOSSIERS_ROOT}/${folderId}/`;
+
         try {
-            await renderer.render(content, output, `${DOSSIERS_ROOT}/${folderId}/`, localImageMap);
+            await renderer.render(content, output, imageBase, localImageMap);
         } finally {
             banner.remove();
             document.removeEventListener('keydown', onKeyDown);

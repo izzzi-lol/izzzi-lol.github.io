@@ -1,5 +1,5 @@
 // Глобальный список для автодополнения в main.js
-const COMMAND_LIST = ['get', 'help', 'clear', 'echo', 'reboot', 'upload'];
+const COMMAND_LIST = ['get', 'help', 'clear', 'echo', 'reboot', 'upload','settings'];
 
 const CommandHandler = {
     async execute(rawInput, terminal) {
@@ -60,6 +60,9 @@ const CommandHandler = {
                 break;
             case 'echo':
                 await CmdEcho.execute(args, terminal);
+                break;
+            case 'settings':
+                if (typeof Settings !== "undefined") Settings.open();
                 break;
             default:
                 if (cmd !== '') {
