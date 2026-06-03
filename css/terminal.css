@@ -58,6 +58,23 @@ del .word {
     animation: crtFlicker 10s infinite;
 }
 
+#beta-badge {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 99999;
+    padding: 3px 0;
+    background: rgba(220, 30, 30, 0.08);
+    border-bottom: 1px solid rgba(220, 30, 30, 0.45);
+    color: rgba(220, 30, 30, 0.85);
+    font-family: var(--mono-font);
+    font-size: 1.25em;
+    letter-spacing: 3px;
+    text-align: center;
+    pointer-events: none;
+}
+
 @keyframes crtFlicker {
     0%,  18%, 20%, 22%, 52%, 54%, 65%, 100% { opacity: 1; }
     19%, 21%                                  { opacity: 0.94; }

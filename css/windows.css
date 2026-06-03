@@ -199,6 +199,15 @@
     grid-template-rows: 0fr;
 }
 
+/* Grid-trick схлопывает content area до 0, но padding — часть box model и
+   0fr его не убирает. Без этого правила у окон с padding на .lyoko-content
+   (settings и др.) остаётся щель высотой padding-top + padding-bottom.
+   Browse не затронут: он сам обнуляет padding через cssText.              */
+.lyoko-content-wrapper.collapsed .lyoko-content {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
 /* ── Контент окна ───────────────────────────────────────────── */
 .lyoko-content {
     min-height: 0;          /* обязательно для 0fr grid-trick */
@@ -210,6 +219,10 @@
     color: #9ed4b4;
     position: relative;
     user-select: text;
+
+    /* Анимация сворачивания/разворачивания через max-height.
+       Transition живёт здесь — JS не должен его перетирать. */
+    transition: max-height 0.36s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Scanline поверх контента */
@@ -278,6 +291,51 @@
     pointer-events: all;
 }
 
+
+/* ── Хэндлы ресайза (десктоп) ───────────────────────────────── */
+.lyoko-rh {
+    position: absolute;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.18s, background 0.18s;
+}
+
+/* Показываем хэндлы при наведении на окно */
+.lyoko-window:hover .lyoko-rh { opacity: 1; }
+
+/* Нижний край (↕) */
+.lyoko-rh-s {
+    bottom: 0;
+    left: 14px;
+    right: 14px;
+    height: 5px;
+    cursor: ns-resize;
+}
+
+/* Правый край (↔) */
+.lyoko-rh-e {
+    right: 0;
+    top: 14px;
+    bottom: 14px;
+    width: 5px;
+    cursor: ew-resize;
+}
+
+/* Угол ↘ */
+.lyoko-rh-se {
+    bottom: 0;
+    right: 0;
+    width: 14px;
+    height: 14px;
+    cursor: nwse-resize;
+}
+
+/* Подсветка при наведении на сам хэндл */
+.lyoko-rh:hover,
+.lyoko-rh:active {
+    background: rgba(0, 200, 100, 0.25);
+    box-shadow: 0 0 6px rgba(0, 200, 100, 0.35);
+}
 
 /* ============================================================
    МОБАЙЛ: полноэкранные окна + tab-strip навигация

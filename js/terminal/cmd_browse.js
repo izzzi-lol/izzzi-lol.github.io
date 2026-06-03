@@ -9,7 +9,7 @@
 //    PROXY  — через corsproxy.io (снимает X-Frame-Options, работает с большинством сайтов)
 // =============================================================================
 
-const BROWSE_PROXY = 'https://corsproxy.io/?url=';
+const BROWSE_PROXY = 'https://api.allorigins.win/get?url=';
 
 // ── Состояние режима прокси ───────────────────────────────────────────────────
 let _brProxyMode = false;
@@ -193,22 +193,31 @@ function _brBuildHTML(url) {
 // ── Открыть окно ──────────────────────────────────────────────────────────────
 function _brOpenWindow(url) {
     const IS_MOBILE = window.matchMedia('(hover:none),(pointer:coarse)').matches;
+    const _vw = window.innerWidth;
+    const _vh = window.innerHeight;
 
     WindowManager.open('browser', 'БРАУЗЕР', _brBuildHTML(url), {
-        width:   IS_MOBILE ? window.innerWidth : 700,
-        minSize: 40,
-        maxSize: IS_MOBILE ? window.innerHeight - 80 : 560,
-        status:  'SCIPNET BROWSER v2.0',
+        width:     IS_MOBILE ? _vw : Math.round(_vw * 0.9),
+        height:    IS_MOBILE ? _vh - 80 : Math.round(_vh * 0.9),
+        maxWidth:  Math.round(_vw * 0.9),
+        maxHeight: Math.round(_vh * 0.95),
+        isResizable: true,
+        status:    'SCIPNET BROWSER v2.0',
     });
 
     requestAnimationFrame(() => {
         const win = document.querySelector('.lyoko-window[data-id="browser"]');
         if (!win) return;
 
-        const content = win.querySelector('.lyoko-content');
-        if (content) content.style.cssText =
-            'padding:0; display:flex; flex-direction:column; height:' +
-            (IS_MOBILE ? (window.innerHeight - 120) : 500) + 'px;';
+        const content  = win.querySelector('.lyoko-content');
+        const browseH  = IS_MOBILE ? (_vh - 120) : Math.round(_vh * 0.9);
+
+        // Высоту задаём на внутреннем контейнере браузера, а НЕ на .lyoko-content.
+        // Это позволяет _makeSizeToggle свободно анимировать max-height контента
+        // и корректно схлопывать окно до нуля.
+        if (content) content.style.cssText = 'padding:0; overflow:hidden;';
+        const wb = win.querySelector('#wb-root');
+        if (wb) wb.style.height = browseH + 'px';
 
         _brBind(win);
         if (url) _brNavigate(win, url, _brProxyMode);
@@ -231,34 +240,13 @@ function _brNavigate(win, url, useProxy) {
     errEl.style.display = 'none';
     frame.style.display = 'block';
 
-    const finalUrl = useProxy ? BROWSE_PROXY + encodeURIComponent(url) : url;
     status.textContent = (useProxy ? '[PROXY] ' : '') + url;
     urlIn.value = url;
-
     proxyBtn.classList.toggle('proxy-on', useProxy);
 
-    let tid = setTimeout(() => {
-        if (!useProxy) {
-            errHint.innerHTML = `
-                Сайт запрещает встраивание.<br>
-                <span id="wb-try-proxy" style="color:rgba(0,200,180,0.7);cursor:pointer;text-decoration:underline">
-                    ⚡ Попробовать через прокси
-                </span>
-                &nbsp;|&nbsp;
-                <a href="${url}" target="_blank"
-                   style="color:rgba(0,200,180,0.5);text-decoration:underline">
-                   ↗ Открыть в новой вкладке
-                </a>`;
-        } else {
-            errHint.innerHTML = `
-                Прокси не помог.<br>
-                <a href="${url}" target="_blank"
-                   style="color:rgba(0,200,180,0.5);text-decoration:underline">
-                   ↗ Открыть в новой вкладке
-                </a>`;
-        }
-
+    const _showError = (hint) => {
         frame.style.display = 'none';
+        errHint.innerHTML   = hint;
         errEl.style.display = 'flex';
         status.textContent  = 'ОШИБКА';
 
@@ -267,6 +255,46 @@ function _brNavigate(win, url, useProxy) {
             _brProxyMode = true;
             _brNavigate(win, url, true);
         });
+    };
+
+    // ── PROXY MODE: allorigins возвращает JSON → грузим через srcdoc ──────────
+    if (useProxy) {
+        status.textContent = '[PROXY] ЗАГРУЗКА...';
+        fetch(BROWSE_PROXY + encodeURIComponent(url))
+            .then(r => {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(data => {
+                if (!data.contents) throw new Error('empty contents');
+                // srcdoc не конфликтует с src — сначала сбросим src
+                frame.removeAttribute('src');
+                frame.srcdoc = data.contents;
+                status.textContent = '[PROXY] ' + url;
+            })
+            .catch(() => {
+                _showError(`
+                    Прокси не помог.<br>
+                    <a href="${url}" target="_blank"
+                       style="color:rgba(0,200,180,0.5);text-decoration:underline">
+                       ↗ Открыть в новой вкладке
+                    </a>`);
+            });
+        return;
+    }
+
+    // ── DIRECT MODE: прямой iframe с таймаутом на X-Frame-Options ────────────
+    let tid = setTimeout(() => {
+        _showError(`
+            Сайт запрещает встраивание.<br>
+            <span id="wb-try-proxy" style="color:rgba(0,200,180,0.7);cursor:pointer;text-decoration:underline">
+                ⚡ Попробовать через прокси
+            </span>
+            &nbsp;|&nbsp;
+            <a href="${url}" target="_blank"
+               style="color:rgba(0,200,180,0.5);text-decoration:underline">
+               ↗ Открыть в новой вкладке
+            </a>`);
     }, 9000);
 
     frame.onload = () => {
@@ -274,11 +302,8 @@ function _brNavigate(win, url, useProxy) {
         try {
             const loc = frame.contentWindow?.location?.href;
             if (loc && loc !== 'about:blank') {
-                const displayUrl = loc.startsWith(BROWSE_PROXY)
-                    ? decodeURIComponent(loc.slice(BROWSE_PROXY.length))
-                    : loc;
-                status.textContent = displayUrl;
-                if (!useProxy) urlIn.value = displayUrl;
+                status.textContent = loc;
+                urlIn.value = loc;
             } else {
                 status.textContent = url;
             }
@@ -287,7 +312,8 @@ function _brNavigate(win, url, useProxy) {
         }
     };
 
-    frame.src = finalUrl;
+    frame.removeAttribute('srcdoc');
+    frame.src = url;
 }
 
 // ── События ───────────────────────────────────────────────────────────────────

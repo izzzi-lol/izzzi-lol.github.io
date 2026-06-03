@@ -9,12 +9,16 @@
 //    WindowManager.setContent(id, html)                → обновить контент
 //
 //  opts = {
-//    width:    number,    // (desktop) начальная ширина (px), default: 420
-//    minSize:  number,    // (desktop) высота контента свёрнутого окна (px), default: 180
-//    maxSize:  number,    // (desktop) максимальная высота контента (px), default: 480
-//    status:   string,    // текст статус-бара (опционально)
-//    backdrop: boolean,   // затемнить фон (default: false)
-//    x: number, y: number // (desktop) начальная позиция (default: по центру)
+//    width:       number,  // (desktop) начальная ширина (px), default: 420
+//    height:      number,  // (desktop) начальная высота контента (px), default: 480
+//    maxWidth:    number,  // (desktop) максимальная ширина (px), без ограничения по умолчанию
+//    maxHeight:   number,  // (desktop) максимальная высота контента (px), без ограничения по умолчанию
+//    isResizable: boolean, // (desktop) разрешить ресайз мышью (default: true)
+//    minSize:     number,  // [устар.] псевдоним height — оставлен для обратной совместимости
+//    maxSize:     number,  // [устар.] псевдоним height — оставлен для обратной совместимости
+//    status:      string,  // текст статус-бара (опционально)
+//    backdrop:    boolean, // затемнить фон (default: false)
+//    x: number, y: number  // (desktop) начальная позиция (default: по центру)
 //  }
 //
 //  ── ДЕСКТОП ──────────────────────────────────────────────────────────────────
@@ -180,6 +184,9 @@ const WindowManager = (() => {
 
     function _makeDraggable(win, titlebar) {
         let ox = 0, oy = 0, startX = 0, startY = 0;
+        let winW = 0, winH = 0;
+        let _dragRaf = null;
+        let _pendingX = 0, _pendingY = 0;
 
         titlebar.addEventListener('mousedown', e => {
             if (e.target.closest('.lyoko-btn')) return;
@@ -191,40 +198,130 @@ const WindowManager = (() => {
             const rect = win.getBoundingClientRect();
             ox = rect.left;
             oy = rect.top;
+            // Кэшируем размер окна один раз — не читаем offsetWidth/Height в каждом mousemove
+            winW = win.offsetWidth;
+            winH = win.offsetHeight;
 
             const onMove = e => {
-                const nx = ox + (e.clientX - startX);
-                const ny = oy + (e.clientY - startY);
-                win.style.left = Math.max(0, Math.min(nx, window.innerWidth  - win.offsetWidth))  + 'px';
-                win.style.top  = Math.max(0, Math.min(ny, window.innerHeight - win.offsetHeight)) + 'px';
+                _pendingX = ox + (e.clientX - startX);
+                _pendingY = oy + (e.clientY - startY);
+                // rAF-троттлинг: не ставим новый кадр, если предыдущий ещё не отрисован
+                if (_dragRaf) return;
+                _dragRaf = requestAnimationFrame(() => {
+                    _dragRaf = null;
+                    win.style.left = Math.max(0, Math.min(_pendingX, window.innerWidth  - winW)) + 'px';
+                    win.style.top  = Math.max(0, Math.min(_pendingY, window.innerHeight - winH)) + 'px';
+                });
             };
             const onUp = () => {
+                if (_dragRaf) { cancelAnimationFrame(_dragRaf); _dragRaf = null; }
+                document.body.style.cursor = '';
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup',   onUp);
             };
+            // Фиксируем курсор на документе — не теряем захват при быстром движении
+            document.body.style.cursor = 'grabbing';
             document.addEventListener('mousemove', onMove);
             document.addEventListener('mouseup',   onUp);
         });
     }
 
     function _makeSizeToggle(win, content, statusbar, opts) {
-        const minH = opts.minSize || 180;
-        const maxH = opts.maxSize || 480;
+        const maxH = opts.height || opts.maxSize || 480;
         let isMin  = false;
         const btn  = win.querySelector('.lyoko-btn.resize');
         if (!btn) return;
 
         function setSize(toMin) {
             isMin = toMin;
-            content.style.transition = 'max-height 0.3s cubic-bezier(0.22,1,0.36,1)';
-            content.style.maxHeight  = (isMin ? minH : maxH) + 'px';
-            if (statusbar) statusbar.style.display = isMin ? 'none' : '';
+            // При сворачивании — полный коллапс (0, не minH).
+            // overflow:hidden нужен, иначе контент «вылезает» за 0px при animate.
+            content.style.maxHeight = isMin ? '0' : maxH + 'px';
+            content.style.overflow  = isMin ? 'hidden' : '';
             btn.title     = isMin ? 'Развернуть' : 'Свернуть';
             btn.innerHTML = isMin ? '▲' : '▼';
+            content.closest('.lyoko-content-wrapper').classList.toggle('collapsed', toMin);
         }
 
         setSize(false);
         btn.addEventListener('click', () => setSize(!isMin));
+    }
+
+    // ── Ресайз за нижний/правый край и угол ──────────────────────────────────
+    function _makeResizable(win, opts) {
+        if (IS_MOBILE) return;
+        if (opts.isResizable === false) return;
+
+        function mkHandle(cls) {
+            const h = document.createElement('div');
+            h.className = 'lyoko-rh ' + cls;
+            win.appendChild(h);
+            return h;
+        }
+
+        function attach(handle, doW, doH) {
+            handle.addEventListener('mousedown', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                _bringToFront(win);
+
+                const x0 = e.clientX;
+                const y0 = e.clientY;
+                const w0 = win.offsetWidth;
+
+                // Высоту тянем через max-height контента, не через высоту окна,
+                // чтобы не конфликтовать с flex-auto-sizing окна.
+                const content = win.querySelector('.lyoko-content');
+                const h0 = content
+                    ? (parseInt(content.style.maxHeight) || content.offsetHeight)
+                    : 200;
+
+                // Отключаем transition на время ресайза — иначе каждый пиксель
+                // запускает анимацию max-height 0.36s и браузер захлёбывается
+                if (doH && content) content.style.transition = 'none';
+
+                let _pendingW = w0, _pendingH = h0;
+                let _resizeRaf = null;
+
+                const onMove = ev => {
+                    if (doW) _pendingW = Math.max(280, Math.min(opts.maxWidth  || Infinity, w0 + (ev.clientX - x0)));
+                    if (doH) _pendingH = Math.max(80,  Math.min(opts.maxHeight || opts.maxSize || Infinity, h0 + (ev.clientY - y0)));
+                    // rAF-троттлинг: один DOM-апдейт на кадр
+                    if (_resizeRaf) return;
+                    _resizeRaf = requestAnimationFrame(() => {
+                        _resizeRaf = null;
+                        if (doW) win.style.width = _pendingW + 'px';
+                        if (doH && content) {
+                            // Убираем overflow:hidden, если окно было свёрнуто
+                            content.style.overflow  = '';
+                            content.style.maxHeight = _pendingH + 'px';
+                        }
+                    });
+                };
+                const onUp = () => {
+                    if (_resizeRaf) { cancelAnimationFrame(_resizeRaf); _resizeRaf = null; }
+                    // Возвращаем transition обратно
+                    if (doH && content) content.style.transition = '';
+                    document.body.style.cursor = '';
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup',   onUp);
+                    win.style.userSelect = '';
+                };
+
+                // Запрещаем выделение текста во время тянущего
+                win.style.userSelect = 'none';
+                // Фиксируем нужный курсор на документе
+                document.body.style.cursor = doW && doH ? 'nwse-resize'
+                                           : doW        ? 'ew-resize'
+                                                        : 'ns-resize';
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup',   onUp);
+            });
+        }
+
+        attach(mkHandle('lyoko-rh-s'),  false, true);  // ↕ снизу
+        attach(mkHandle('lyoko-rh-e'),  true,  false); // ↔ справа
+        attach(mkHandle('lyoko-rh-se'), true,  true);  // ↘ угол
     }
 
     // =========================================================================
@@ -318,12 +415,14 @@ const WindowManager = (() => {
 
         } else {
             // ── Десктоп: стандартный заголовок + resize + drag ───────────────
-            const width = opts.width || 420;
-            const pos   = (opts.x != null && opts.y != null)
+            const width    = opts.width || 420;
+            const initH    = opts.height || opts.maxSize || 480;
+            const pos      = (opts.x != null && opts.y != null)
                 ? { x: opts.x, y: opts.y }
-                : _defaultPos(width, opts.maxSize || 480);
+                : _defaultPos(width, initH);
 
-            win.style.width = width + 'px';
+            win.style.width    = width + 'px';
+            if (opts.maxWidth)  win.style.maxWidth  = opts.maxWidth  + 'px';
             win.style.left  = pos.x + 'px';
             win.style.top   = pos.y + 'px';
 
@@ -345,6 +444,7 @@ const WindowManager = (() => {
 
             _makeDraggable(win, titlebar);
             _makeSizeToggle(win, content, statusbar, opts);
+            _makeResizable(win, opts);
         }
 
         win.querySelector('.lyoko-btn.close').addEventListener('click', () => WindowManager.close(id));

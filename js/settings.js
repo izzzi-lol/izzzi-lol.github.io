@@ -312,10 +312,11 @@ const Settings = (() => {
         const html = buildHTML(cfg);
 
         WindowManager.open('settings', 'СИСТЕМНЫЕ НАСТРОЙКИ', html, {
-            width:   740,
-            minSize: 80,
-            maxSize: 620,
-            status:  'SCIPNET CONFIG v1.0',
+            width:    740,
+            height:   620,
+            status:   'SCIPNET CONFIG v1.0',
+            isResizable: false,
+            backdrop: true
         });
 
         // Навешиваем события после вставки в DOM
