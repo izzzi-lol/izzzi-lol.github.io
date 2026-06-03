@@ -9,42 +9,34 @@
 //    WindowManager.setContent(id, html)                → обновить контент
 //
 //  opts = {
-//    width:    number,   // начальная ширина (px), default: 420
-//    minSize:  number,   // высота контента в свёрнутом состоянии (px), default: 180
-//    maxSize:  number,   // максимальная высота контента (px), default: 480
-//    status:   string,   // текст статус-бара (опционально)
-//    backdrop: boolean,  // затемнить фон (default: false)
-//    x: number, y: number  // начальная позиция (default: по центру)
+//    width:    number,    // (desktop) начальная ширина (px), default: 420
+//    minSize:  number,    // (desktop) высота контента свёрнутого окна (px), default: 180
+//    maxSize:  number,    // (desktop) максимальная высота контента (px), default: 480
+//    status:   string,    // текст статус-бара (опционально)
+//    backdrop: boolean,   // затемнить фон (default: false)
+//    x: number, y: number // (desktop) начальная позиция (default: по центру)
 //  }
 //
-//  Только для десктопа — не инициализируется на touch-устройствах.
+//  ── ДЕСКТОП ──────────────────────────────────────────────────────────────────
+//  Плавающие перетаскиваемые окна с поддержкой collapse/expand.
+//  Анимация открытия (3 фазы): flash → titlebar/statusbar → контент слайдером вниз
+//  Анимация закрытия (3 фазы): контент слайдером вверх → flash → scaleX(0)
 //
-//  Анимация появления (3 фазы):
-//    1. Яркий белый прямоугольник (flash, ~60 мс)
-//    2. Окно с TitleBar и StatusBar, контент скрыт
-//    3. Контент раскрывается слайдером вниз (CSS grid transition, 380 мс)
-//
-//  Анимация исчезновения (3 фазы):
-//    1. Контент схлопывается слайдером вверх (380 мс)
-//    2. Яркий белый прямоугольник (flash, ~65 мс)
-//    3. Окно схлопывается по ширине scaleX → 0 (260 мс)
+//  ── МОБАЙЛ ───────────────────────────────────────────────────────────────────
+//  Полноэкранные окна над консолью; одно поверх другого по z-index.
+//  Тайтл-бар: горизонтальный скролл-стрип из вкладок всех открытых окон.
+//    · Тап по вкладке             → переключиться на это окно
+//    · Быстрый свайп влево        → следующее окно (по порядку открытия)
+//    · Быстрый свайп вправо       → предыдущее окно
+//  Анимации: flash in/out (без grid-слайдера)
 // =============================================================================
 
 const WindowManager = (() => {
 
-    // Только десктоп
-    const IS_DESKTOP = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-/*
-    if (!IS_DESKTOP) {
-        return {
-            open:       () => {},
-            close:      () => {},
-            closeAll:   () => {},
-            setContent: () => {},
-        };
-    }
-*/
-    // ── Слой окон ────────────────────────────────────────────────────────────
+    // ── Определение платформы ────────────────────────────────────────────────
+    const IS_MOBILE = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+
+    // ── DOM ──────────────────────────────────────────────────────────────────
     let layer, backdrop;
 
     function _initDOM() {
@@ -60,7 +52,8 @@ const WindowManager = (() => {
     // ── Z-index management ───────────────────────────────────────────────────
     let _zBase    = 500;
     let _zCounter = 0;
-    const _windows = {}; // id → { el, opts }
+    const _windows = {}; // id → { el, title, opts }
+    let _mobileActiveId = null;
 
     function _bringToFront(el) {
         _zCounter++;
@@ -69,7 +62,7 @@ const WindowManager = (() => {
         el.classList.add('active');
     }
 
-    // ── Позиционирование по умолчанию ────────────────────────────────────────
+    // ── Desktop: каскадное позиционирование ──────────────────────────────────
     let _cascadeOffset = 0;
     function _defaultPos(width, height) {
         const cx = Math.round((window.innerWidth  - width)  / 2) + _cascadeOffset;
@@ -82,14 +75,109 @@ const WindowManager = (() => {
     }
 
     // ── Утилиты ──────────────────────────────────────────────────────────────
-
-    /** Промис-пауза на N миллисекунд */
     const _sleep = ms => new Promise(r => setTimeout(r, ms));
-
-    /** Один кадр requestAnimationFrame */
     const _raf   = ()  => new Promise(r => requestAnimationFrame(r));
 
-    // ── Drag ─────────────────────────────────────────────────────────────────
+    // =========================================================================
+    //  МОБАЙЛ: tab strip + навигация свайпом
+    // =========================================================================
+
+    /**
+     * Перестраивает tab-strip во всех открытых окнах.
+     * Активная вкладка = _mobileActiveId.
+     */
+    function _refreshAllTabs() {
+        if (!IS_MOBILE) return;
+        const ids = Object.keys(_windows);
+
+        ids.forEach(ownId => {
+            const strip = _windows[ownId].el.querySelector('.lyoko-tab-strip');
+            if (!strip) return;
+
+            strip.innerHTML = ids.map(wid => {
+                const isActive = wid === _mobileActiveId;
+                return `<span class="lyoko-tab${isActive ? ' active' : ''}" data-wid="${wid}">${_windows[wid].title}</span>`;
+            }).join('');
+
+            // Клик по вкладке
+            strip.querySelectorAll('.lyoko-tab').forEach(tab => {
+                tab.addEventListener('click', e => {
+                    e.stopPropagation();
+                    _switchToWindow(tab.dataset.wid);
+                });
+            });
+
+            // Прокрутить активную вкладку в видимую зону
+            if (ownId === _mobileActiveId) {
+                const activeTab = strip.querySelector('.lyoko-tab.active');
+                activeTab?.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+            }
+        });
+    }
+
+    /** Переключиться на окно по id (мобайл). */
+    function _switchToWindow(id) {
+        if (!_windows[id]) return;
+        _mobileActiveId = id;
+        _bringToFront(_windows[id].el);
+        _refreshAllTabs();
+    }
+
+    /**
+     * Растягивает окно на весь экран над консолью.
+     * Высота #console-area + #crt-statusbar измеряется динамически.
+     */
+    function _fitMobile(win) {
+        const consoleEl = document.getElementById('console-area');
+        const statusEl  = document.getElementById('crt-statusbar');
+        const bottomH   = (consoleEl?.offsetHeight ?? 0) + (statusEl?.offsetHeight ?? 0);
+
+        Object.assign(win.style, {
+            position  : 'fixed',
+            left      : '0',
+            top       : '0',
+            right     : '0',
+            bottom    : bottomH + 'px',
+            width     : '100%',
+            height    : '',
+            maxHeight : '',
+        });
+    }
+
+    /**
+     * Добавляет свайп-навигацию на тайтл-бар (мобайл).
+     * Быстрый свайп (скорость ≥ 0.3 px/мс И смещение ≥ 40px) → смена окна.
+     * Медленный скролл → нативный скролл вкладок.
+     */
+    function _addMobileSwipe(win, titlebar) {
+        let sx = 0, sy = 0, t0 = 0;
+
+        titlebar.addEventListener('touchstart', e => {
+            sx = e.touches[0].clientX;
+            sy = e.touches[0].clientY;
+            t0 = Date.now();
+        }, { passive: true });
+
+        titlebar.addEventListener('touchend', e => {
+            const dx = e.changedTouches[0].clientX - sx;
+            const dy = e.changedTouches[0].clientY - sy;
+
+            // Игнорируем вертикальный свайп и слишком медленные/короткие
+            if (Math.abs(dy) > Math.abs(dx)) return;
+            const velocity = Math.abs(dx) / (Date.now() - t0 || 1);
+            if (velocity < 0.3 || Math.abs(dx) < 40) return;
+
+            const ids = Object.keys(_windows);
+            const cur = ids.indexOf(_mobileActiveId);
+            if (dx < 0 && cur < ids.length - 1) _switchToWindow(ids[cur + 1]); // влево  → вперёд
+            if (dx > 0 && cur > 0)               _switchToWindow(ids[cur - 1]); // вправо → назад
+        }, { passive: true });
+    }
+
+    // =========================================================================
+    //  ДЕСКТОП: drag, size-toggle
+    // =========================================================================
+
     function _makeDraggable(win, titlebar) {
         let ox = 0, oy = 0, startX = 0, startY = 0;
 
@@ -119,12 +207,12 @@ const WindowManager = (() => {
         });
     }
 
-    // ── Кнопка размера (toggle compact/full) ─────────────────────────────────
     function _makeSizeToggle(win, content, statusbar, opts) {
         const minH = opts.minSize || 180;
         const maxH = opts.maxSize || 480;
         let isMin  = false;
         const btn  = win.querySelector('.lyoko-btn.resize');
+        if (!btn) return;
 
         function setSize(toMin) {
             isMin = toMin;
@@ -135,7 +223,7 @@ const WindowManager = (() => {
             btn.innerHTML = isMin ? '▲' : '▼';
         }
 
-        setSize(false); // начинаем с развёрнутого состояния
+        setSize(false);
         btn.addEventListener('click', () => setSize(!isMin));
     }
 
@@ -144,53 +232,58 @@ const WindowManager = (() => {
     // =========================================================================
 
     /**
-     * Появление окна (3 фазы).
-     *
-     * Всё до первого await — синхронный блок: браузер НЕ рисует между шагами 1–3.
-     * Первый _raf() — первый yield → браузер рисует flash + collapsed за один кадр.
-     * Пользователь никогда не видит «полное» окно до анимации.
+     * Появление окна.
+     * Мобайл:  flash → контент сразу видим
+     * Десктоп: flash → только titlebar/statusbar → контент слайдером вниз (grid)
      */
     async function _animateOpen(win, wrapper) {
-        // 1. Мгновенно схлопываем контент (без transition, пока всё скрыто)
+        if (IS_MOBILE) {
+            win.classList.add('wm-flash-in');
+            await _raf(); await _raf();
+            await _sleep(55);
+            win.classList.remove('wm-flash-in');
+            return;
+        }
+
+        // Desktop
         wrapper.style.transition = 'none';
         wrapper.classList.add('collapsed');
-
-        // 2. Накладываем белую вспышку поверх
         win.classList.add('wm-flash-in');
 
-        // Ждём два кадра — гарантируем, что браузер отрисовал оба состояния
         await _raf(); await _raf();
         await _sleep(55);
 
-        // 3. Убираем flash → видны только TitleBar + StatusBar (контент скрыт)
         win.classList.remove('wm-flash-in');
-
         await _sleep(28);
 
-        // 4. Возвращаем CSS transition и открываем контент слайдером вниз
         wrapper.style.transition = '';
         wrapper.classList.remove('collapsed');
-        // CSS grid transition (0.38s) работает самостоятельно
     }
 
     /**
-     * Исчезновение окна (3 фазы).
-     * Вызывается после удаления окна из _windows,
-     * поэтому повторный вызов close(id) невозможен.
+     * Исчезновение окна.
+     * Мобайл:  flash → удаление
+     * Десктоп: контент слайдером вверх → flash → scaleX(0) → удаление
+     *
+     * Вызывается ПОСЛЕ delete _windows[id], повторный close невозможен.
      */
     async function _animateClose(win, wrapper) {
         win.style.pointerEvents = 'none';
 
-        // 1. Контент схлопывается слайдером вверх (CSS grid transition, 0.38s)
+        if (IS_MOBILE) {
+            win.classList.add('wm-flash-out');
+            await _sleep(350); // чуть больше длины lyokoFlashClose (0.3s)
+            win.remove();
+            return;
+        }
+
+        // Desktop
         wrapper.classList.add('collapsed');
-        await _sleep(410); // чуть больше 380 мс transition
+        await _sleep(410);
         win.classList.add('wm-flash-out');
 
-        // 2. Белая вспышка — окно вспыхивает белым прямоугольником
         await _sleep(12);
 
-        // 3. Окно схлопывается по ширине (scaleX: 1 → 0)
-        // Transition задаём инлайново — переопределяет CSS rule (inline > class)
         win.style.transition = 'transform 0.26s cubic-bezier(0.55, 0, 1, 0.45)';
         win.style.transform  = 'scaleX(0)';
         await _sleep(280);
@@ -198,41 +291,63 @@ const WindowManager = (() => {
         win.remove();
     }
 
-    // ── Построить DOM окна ───────────────────────────────────────────────────
-    function _buildWindow(id, title, contentHTML, opts) {
-        const width = opts.width || 420;
-        const pos   = (opts.x != null && opts.y != null)
-            ? { x: opts.x, y: opts.y }
-            : _defaultPos(width, opts.maxSize || 480);
+    // =========================================================================
+    //  ПОСТРОЕНИЕ DOM ОКНА
+    // =========================================================================
 
+    function _buildWindow(id, title, contentHTML, opts) {
         const win = document.createElement('div');
         win.className  = 'lyoko-window';
         win.dataset.id = id;
-        win.style.width = width + 'px';
-        win.style.left  = pos.x + 'px';
-        win.style.top   = pos.y + 'px';
 
-        win.innerHTML = `
-            <div class="lyoko-titlebar">
-                <span class="lyoko-title">${title}</span>
-                <button class="lyoko-btn resize" title="Свернуть">▼</button>
-                <button class="lyoko-btn close"  title="Закрыть">✕</button>
-            </div>
-            <div class="lyoko-content-wrapper">
-                <div class="lyoko-content">${contentHTML}</div>
-            </div>
-            ${opts.status ? `<div class="lyoko-statusbar"><span>${opts.status}</span><span>ID:${id.toUpperCase()}</span></div>` : ''}
-        `;
+        if (IS_MOBILE) {
+            // ── Мобайл: tab-strip вместо заголовка, нет кнопки resize ────────
+            win.innerHTML = `
+                <div class="lyoko-titlebar">
+                    <div class="lyoko-tab-strip"></div>
+                    <button class="lyoko-btn close" title="Закрыть">✕</button>
+                </div>
+                <div class="lyoko-content-wrapper">
+                    <div class="lyoko-content">${contentHTML}</div>
+                </div>
+                ${opts.status ? `<div class="lyoko-statusbar"><span>${opts.status}</span><span>ID:${id.toUpperCase()}</span></div>` : ''}
+            `;
 
-        const titlebar  = win.querySelector('.lyoko-titlebar');
-        const wrapper   = win.querySelector('.lyoko-content-wrapper');
-        const content   = win.querySelector('.lyoko-content');
-        const statusbar = win.querySelector('.lyoko-statusbar');
-        const closeBtn  = win.querySelector('.lyoko-btn.close');
+            _fitMobile(win);
+            _addMobileSwipe(win, win.querySelector('.lyoko-titlebar'));
 
-        _makeDraggable(win, titlebar);
-        _makeSizeToggle(win, content, statusbar, opts);
-        closeBtn.addEventListener('click', () => WindowManager.close(id));
+        } else {
+            // ── Десктоп: стандартный заголовок + resize + drag ───────────────
+            const width = opts.width || 420;
+            const pos   = (opts.x != null && opts.y != null)
+                ? { x: opts.x, y: opts.y }
+                : _defaultPos(width, opts.maxSize || 480);
+
+            win.style.width = width + 'px';
+            win.style.left  = pos.x + 'px';
+            win.style.top   = pos.y + 'px';
+
+            win.innerHTML = `
+                <div class="lyoko-titlebar">
+                    <span class="lyoko-title">${title}</span>
+                    <button class="lyoko-btn resize" title="Свернуть">▼</button>
+                    <button class="lyoko-btn close"  title="Закрыть">✕</button>
+                </div>
+                <div class="lyoko-content-wrapper">
+                    <div class="lyoko-content">${contentHTML}</div>
+                </div>
+                ${opts.status ? `<div class="lyoko-statusbar"><span>${opts.status}</span><span>ID:${id.toUpperCase()}</span></div>` : ''}
+            `;
+
+            const titlebar  = win.querySelector('.lyoko-titlebar');
+            const content   = win.querySelector('.lyoko-content');
+            const statusbar = win.querySelector('.lyoko-statusbar');
+
+            _makeDraggable(win, titlebar);
+            _makeSizeToggle(win, content, statusbar, opts);
+        }
+
+        win.querySelector('.lyoko-btn.close').addEventListener('click', () => WindowManager.close(id));
         win.addEventListener('mousedown', () => _bringToFront(win));
 
         return win;
@@ -251,20 +366,27 @@ const WindowManager = (() => {
     function open(id, title, contentHTML, opts = {}) {
         _initDOM();
 
-        // Окно уже открыто — обновляем контент и выносим вперёд
+        // Окно уже открыто → обновляем контент, выносим вперёд
         if (_windows[id]) {
             setContent(id, contentHTML);
-            _bringToFront(_windows[id].el);
+            IS_MOBILE ? _switchToWindow(id) : _bringToFront(_windows[id].el);
             return;
         }
 
-        const win     = _buildWindow(id, title, contentHTML, opts);
+        const win = _buildWindow(id, title, contentHTML, opts);
         layer.appendChild(win);
-        _windows[id] = { el: win, opts };
-        _bringToFront(win);
+        _windows[id] = { el: win, title, opts };
+
+        if (IS_MOBILE) {
+            _mobileActiveId = id;
+            _bringToFront(win);
+            _refreshAllTabs(); // заполняем tab-strip во всех окнах
+        } else {
+            _bringToFront(win);
+        }
+
         _updateBackdrop();
 
-        // Запускаем анимацию ПОСЛЕ appendChild — иначе браузер не знает о DOM-узле
         const wrapper = win.querySelector('.lyoko-content-wrapper');
         _animateOpen(win, wrapper);
     }
@@ -276,9 +398,19 @@ const WindowManager = (() => {
         const win     = entry.el;
         const wrapper = win.querySelector('.lyoko-content-wrapper');
 
-        // Сразу убираем из реестра — повторный close(id) вернётся на первой строке
+        // Удаляем из реестра сразу — повторный close(id) вернётся здесь
         delete _windows[id];
         _updateBackdrop();
+
+        // Мобайл: автоматически перейти на другое окно
+        if (IS_MOBILE) {
+            const remaining = Object.keys(_windows);
+            if (remaining.length > 0) {
+                _switchToWindow(remaining[remaining.length - 1]);
+            } else {
+                _mobileActiveId = null;
+            }
+        }
 
         _animateClose(win, wrapper);
     }

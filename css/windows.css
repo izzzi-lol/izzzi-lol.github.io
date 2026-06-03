@@ -277,3 +277,119 @@
     opacity: 1;
     pointer-events: all;
 }
+
+
+/* ============================================================
+   МОБАЙЛ: полноэкранные окна + tab-strip навигация
+   (hover: none), (pointer: coarse) — сенсорные устройства
+   ============================================================ */
+
+@media (hover: none), (pointer: coarse) {
+
+    /* Окно: полный экран; position/size задаётся через JS (_fitMobile) */
+    .lyoko-window {
+        min-width: 0 !important;
+        border-radius: 0;
+    }
+
+    /* Угловые декор-уголки скрываем — они за краем экрана */
+    .lyoko-window::before,
+    .lyoko-window::after {
+        display: none;
+    }
+
+    /* Тайтл-бар: tab-strip */
+    .lyoko-titlebar {
+        padding: 0 6px 0 0;
+        gap: 0;
+        cursor: default;
+        min-height: 40px;
+        align-items: stretch;
+    }
+
+    /* Мигающая точка скрыта — место занимает tab-strip */
+    .lyoko-titlebar::before {
+        display: none;
+    }
+
+    /* Скролл-стрип вкладок */
+    .lyoko-tab-strip {
+        flex: 1;
+        display: flex;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .lyoko-tab-strip::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Одна вкладка */
+    .lyoko-tab {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        font-size: 0.62em;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: rgba(0, 200, 100, 0.38);
+        border-bottom: 2px solid transparent;
+        border-right: 1px solid rgba(0, 200, 100, 0.1);
+        cursor: pointer;
+        white-space: nowrap;
+        transition: color 0.15s, border-color 0.15s, background 0.15s;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+    }
+
+    .lyoko-tab:last-child {
+        border-right: none;
+    }
+
+    /* Активная вкладка */
+    .lyoko-tab.active {
+        color: #6ddc9c;
+        border-bottom-color: #00bb58;
+        text-shadow: 0 0 8px rgba(0, 200, 100, 0.5);
+        background: rgba(0, 200, 100, 0.04);
+    }
+
+    /* Тап-подсветка для неактивных */
+    .lyoko-tab:active:not(.active) {
+        background: rgba(0, 200, 100, 0.08);
+    }
+
+    /* Content wrapper: заполняет оставшуюся высоту */
+    .lyoko-content-wrapper {
+        flex: 1;
+        min-height: 0;
+    }
+
+    /* Контент: полная прокрутка, без ограничения высоты */
+    .lyoko-content {
+        max-height: none !important;
+        -webkit-overflow-scrolling: touch;
+        font-size: 0.88em;
+        padding: 12px 14px;
+    }
+
+    /* Кнопка resize на мобайле не нужна */
+    .lyoko-btn.resize {
+        display: none;
+    }
+
+    /* Кнопка close: чуть крупнее под палец */
+    .lyoko-btn.close {
+        width: 34px;
+        height: 34px;
+        font-size: 12px;
+        align-self: center;
+        flex-shrink: 0;
+        margin: 3px 0;
+    }
+}

@@ -1,5 +1,5 @@
 // Глобальный список для автодополнения в main.js
-const COMMAND_LIST = ['get', 'help', 'clear', 'echo', 'reboot', 'upload','settings'];
+const COMMAND_LIST = ['get', 'help', 'clear', 'echo', 'reboot', 'upload','settings','browse'];
 
 const CommandHandler = {
     async execute(rawInput, terminal) {
@@ -9,7 +9,6 @@ const CommandHandler = {
 
         switch (cmd) {
             case 'get':
-                // Передаем управление в файл cmd_get.js
                 await CmdGet.execute(args, terminal);
                 break;
             case 'clear':
@@ -32,6 +31,9 @@ const CommandHandler = {
                 terminal.printSystem("    Загрузка и демонстрация локального досье (.txt) с изображениями");
                 terminal.printSystem("    и/или аудиозаписью (.mp3) прямо из файловой системы.");
                 terminal.printSystem("    ВНИМАНИЕ! Ваше досье никак не загружается на сайт! Подробности внизу!");
+                terminal.printSystem(" ");
+                terminal.printSystem("  BROWSE [url]", 'var(--terminal-green)');
+                terminal.printSystem("    Встроенный браузер. Пример: browse https://scp-wiki.net");
                 terminal.printSystem(" ");
                 terminal.printSystem("  CLEAR", 'var(--terminal-green)');
                 terminal.printSystem("    Очистка экрана терминала.");
@@ -64,6 +66,9 @@ const CommandHandler = {
             case 'settings':
                 if (typeof Settings !== "undefined") Settings.open();
                 break;
+            case 'browse':
+                CmdBrowse.execute(args, terminal);
+                break;
             default:
                 if (cmd !== '') {
                     terminal.printError(`КОМАНДА НЕ РАСПОЗНАНА: ${cmd}. Введите help для списка команд.`);
@@ -71,4 +76,3 @@ const CommandHandler = {
         }
     }
 };
-
