@@ -22,7 +22,7 @@
 //  }
 //
 //  ── ДЕСКТОП ──────────────────────────────────────────────────────────────────
-//  Плавающие перетаскиваемые окна с поддержкой collapse/expand.
+//  Плавающие перетаскиваемые окна с поддержкой collapse/expand/maximize.
 //  Анимация открытия (3 фазы): flash → titlebar/statusbar → контент слайдером вниз
 //  Анимация закрытия (3 фазы): контент слайдером вверх → flash → scaleX(0)
 //
@@ -226,28 +226,129 @@ const WindowManager = (() => {
         });
     }
 
-    function _makeSizeToggle(win, content, statusbar, opts) {
-        const maxH = opts.height || opts.maxSize || 480;
+    function _makeSizeToggle(win, content, statusbar, opts, maxCtrl) {
+        // savedH обновляется перед каждым сворачиванием — учитывает ручной ресайз
+        let savedH = opts.height || opts.maxSize || 480;
         let isMin  = false;
         const btn  = win.querySelector('.lyoko-btn.resize');
         if (!btn) return;
 
         function setSize(toMin) {
             isMin = toMin;
-            // При сворачивании — полный коллапс (0, не minH).
-            // overflow:hidden нужен, иначе контент «вылезает» за 0px при animate.
-            content.style.maxHeight = isMin ? '0' : maxH + 'px';
+            if (toMin) {
+                // Сохраняем текущую высоту перед сворачиванием
+                const curH = parseInt(content.style.maxHeight);
+                if (curH > 0) savedH = curH;
+                content.style.maxHeight = '0';
+            } else {
+                content.style.maxHeight = savedH + 'px';
+            }
             content.style.overflow  = isMin ? 'hidden' : '';
             btn.title     = isMin ? 'Развернуть' : 'Свернуть';
             btn.innerHTML = isMin ? '▲' : '▼';
             content.closest('.lyoko-content-wrapper').classList.toggle('collapsed', toMin);
+
+            AudioHandler.playUI(isMin ? 'minimize' : 'maximize');
         }
 
         setSize(false);
-        btn.addEventListener('click', () => setSize(!isMin));
+        btn.addEventListener('click', () => {
+            // Если окно maximized — restore вместо collapse
+            if (maxCtrl?.isMaximized()) { maxCtrl.restore(); return; }
+            setSize(!isMin);
+        });
     }
 
-    // ── Ресайз за нижний/правый край и угол ──────────────────────────────────
+    // ── Maximize / Restore ────────────────────────────────────────────────────
+    /**
+     * Разворачивает окно до своего максимума и центрирует.
+     * Повторный клик (или клик collapse) — восстанавливает прежние размер и позицию.
+     *
+     * Возвращает контроллер { isMaximized(), restore() } для _makeSizeToggle.
+     */
+    function _makeMaximize(win, content, opts) {
+        const btn = win.querySelector('.lyoko-btn.maximize');
+        if (!btn) return { isMaximized: () => false, restore: () => {} };
+
+        let _isMax = false;
+        let _snap  = null; // { left, top, width, maxHeight }
+
+        const TRANS = 'left 0.22s ease, top 0.22s ease, width 0.22s ease';
+
+        function maximize() {
+            // Снимок текущего состояния.
+            // Если окно свёрнуто (maxHeight='0'), сохраняем дефолтную высоту —
+            // иначе restore вернёт окно в свёрнутое состояние.
+            const curMaxH = parseInt(content.style.maxHeight);
+            _snap = {
+                left:      win.style.left,
+                top:       win.style.top,
+                width:     win.style.width,
+                maxHeight: curMaxH > 0
+                    ? content.style.maxHeight
+                    : (opts.height || opts.maxSize || 480) + 'px',
+            };
+
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const targetW = Math.min(opts.maxWidth  ?? vw,  vw  - 20);
+            const targetH = Math.min(opts.maxHeight ?? opts.maxSize ?? (vh - 60), vh - 40);
+            const cx = Math.max(0, Math.round((vw - targetW) / 2));
+            const cy = Math.max(0, Math.round((vh - targetH) / 2));
+
+            win.style.transition    = TRANS;
+            win.style.maxWidth      = '';          // снимаем ограничение maxWidth
+            win.style.left          = cx + 'px';
+            win.style.top           = cy + 'px';
+            win.style.width         = targetW + 'px';
+            content.style.overflow  = '';
+            content.style.maxHeight = targetH + 'px';
+
+            if (!opts.backdrop) backdrop.classList.toggle('visible', true);
+
+            _isMax = true;
+            win.classList.add('wm-maximized');
+            btn.innerHTML = '⊟';
+            btn.title     = 'Восстановить';
+            btn.classList.add('maximized');
+
+            setTimeout(() => { win.style.transition = ''; }, 240);
+        }
+
+        function restore() {
+            if (!_snap) return;
+
+            win.style.transition    = TRANS;
+            win.style.left          = _snap.left;
+            win.style.top           = _snap.top;
+            win.style.width         = _snap.width;
+            content.style.maxHeight = _snap.maxHeight;
+
+            if (opts.maxWidth) win.style.maxWidth = opts.maxWidth + 'px';
+
+            win.classList.remove('wm-maximized');
+            if (!opts.backdrop) {
+                // Прячем backdrop только если больше нет развёрнутых окон
+                const anyMaximized = layer.querySelectorAll('.wm-maximized').length > 0;
+                if (!anyMaximized) backdrop.classList.toggle('visible', false);
+            }
+
+            _isMax = false;
+            btn.innerHTML = '⊞';
+            btn.title     = 'Развернуть на весь экран';
+            btn.classList.remove('maximized');
+
+            setTimeout(() => { win.style.transition = ''; }, 240);
+        }
+
+        btn.addEventListener('click', () => _isMax ? restore() : maximize());
+
+        return { isMaximized: () => _isMax, restore };
+    }
+
+    // ── Ресайз: ghost-режим ──────────────────────────────────────────────────
+    // При старте тянем призрачный прямоугольник (outline), контент окна прячется.
+    // Размер применяется единственный раз — в момент отпускания кнопки мыши.
     function _makeResizable(win, opts) {
         if (IS_MOBILE) return;
         if (opts.isResizable === false) return;
@@ -265,20 +366,44 @@ const WindowManager = (() => {
                 e.stopPropagation();
                 _bringToFront(win);
 
-                const x0 = e.clientX;
-                const y0 = e.clientY;
-                const w0 = win.offsetWidth;
+                const x0   = e.clientX;
+                const y0   = e.clientY;
+                const rect = win.getBoundingClientRect();
+                const w0   = rect.width;
 
-                // Высоту тянем через max-height контента, не через высоту окна,
-                // чтобы не конфликтовать с flex-auto-sizing окна.
                 const content = win.querySelector('.lyoko-content');
+                const wrapper = win.querySelector('.lyoko-content-wrapper');
                 const h0 = content
                     ? (parseInt(content.style.maxHeight) || content.offsetHeight)
                     : 200;
 
-                // Отключаем transition на время ресайза — иначе каждый пиксель
-                // запускает анимацию max-height 0.36s и браузер захлёбывается
-                if (doH && content) content.style.transition = 'none';
+                // extraH = высота titlebar + statusbar (не меняется во время ресайза)
+                const extraH = rect.height - h0;
+
+                // ── Создаём ghost-прямоугольник ──────────────────────────────
+                // Без box-shadow: тень с блюром пересчитывается каждый кадр при
+                // изменении размера — главный источник лагов. Используем outline
+                // (не влияет на layout) и will-change для изоляции перерисовки.
+                const ghost = document.createElement('div');
+                ghost.className = 'lyoko-resize-ghost';
+                Object.assign(ghost.style, {
+                    position     : 'fixed',
+                    boxSizing    : 'border-box',
+                    left         : rect.left + 'px',
+                    top          : rect.top  + 'px',
+                    width        : w0 + 'px',
+                    height       : rect.height + 'px',
+                    outline      : '1px solid var(--theme-color, #a200ff)',
+                    background   : 'transparent',
+                    pointerEvents: 'none',
+                    zIndex       : String((parseInt(win.style.zIndex) || 500) + 1),
+                    willChange   : 'width, height',
+                });
+                layer.appendChild(ghost);
+
+                // ── Прячем контент, оставляем titlebar и statusbar ───────────
+                // visibility:hidden дешевле opacity:0 — не создаёт compositing layer
+                if (wrapper) wrapper.style.visibility = 'hidden';
 
                 let _pendingW = w0, _pendingH = h0;
                 let _resizeRaf = null;
@@ -286,34 +411,38 @@ const WindowManager = (() => {
                 const onMove = ev => {
                     if (doW) _pendingW = Math.max(280, Math.min(opts.maxWidth  || Infinity, w0 + (ev.clientX - x0)));
                     if (doH) _pendingH = Math.max(80,  Math.min(opts.maxHeight || opts.maxSize || Infinity, h0 + (ev.clientY - y0)));
-                    // rAF-троттлинг: один DOM-апдейт на кадр
                     if (_resizeRaf) return;
                     _resizeRaf = requestAnimationFrame(() => {
                         _resizeRaf = null;
-                        if (doW) win.style.width = _pendingW + 'px';
-                        if (doH && content) {
-                            // Убираем overflow:hidden, если окно было свёрнуто
-                            content.style.overflow  = '';
-                            content.style.maxHeight = _pendingH + 'px';
-                        }
+                        if (doW) ghost.style.width  = _pendingW + 'px';
+                        if (doH) ghost.style.height = (extraH + _pendingH) + 'px';
                     });
                 };
+
                 const onUp = () => {
                     if (_resizeRaf) { cancelAnimationFrame(_resizeRaf); _resizeRaf = null; }
-                    // Возвращаем transition обратно
-                    if (doH && content) content.style.transition = '';
+
+                    // ── Применяем финальный размер к окну ───────────────────
+                    if (doW) win.style.width = _pendingW + 'px';
+                    if (doH && content) {
+                        content.style.overflow  = '';
+                        content.style.maxHeight = _pendingH + 'px';
+                    }
+
+                    // ── Убираем ghost, возвращаем контент ───────────────────
+                    ghost.remove();
+                    if (wrapper) wrapper.style.visibility = '';
+
                     document.body.style.cursor = '';
                     document.removeEventListener('mousemove', onMove);
                     document.removeEventListener('mouseup',   onUp);
                     win.style.userSelect = '';
                 };
 
-                // Запрещаем выделение текста во время тянущего
                 win.style.userSelect = 'none';
-                // Фиксируем нужный курсор на документе
                 document.body.style.cursor = doW && doH ? 'nwse-resize'
-                                           : doW        ? 'ew-resize'
-                                                        : 'ns-resize';
+                    : doW        ? 'ew-resize'
+                        : 'ns-resize';
                 document.addEventListener('mousemove', onMove);
                 document.addEventListener('mouseup',   onUp);
             });
@@ -350,9 +479,11 @@ const WindowManager = (() => {
         await _raf(); await _raf();
         await _sleep(55);
 
+        if (win.dataset.closing) return;
         win.classList.remove('wm-flash-in');
         await _sleep(28);
 
+        if (win.dataset.closing) return;
         wrapper.style.transition = '';
         wrapper.classList.remove('collapsed');
     }
@@ -429,8 +560,9 @@ const WindowManager = (() => {
             win.innerHTML = `
                 <div class="lyoko-titlebar">
                     <span class="lyoko-title">${title}</span>
-                    <button class="lyoko-btn resize" title="Свернуть">▼</button>
-                    <button class="lyoko-btn close"  title="Закрыть">✕</button>
+                    <button class="lyoko-btn resize"   title="Свернуть">▼</button>
+                    <button class="lyoko-btn maximize" title="Развернуть на весь экран">⊞</button>
+                    <button class="lyoko-btn close"    title="Закрыть">✕</button>
                 </div>
                 <div class="lyoko-content-wrapper">
                     <div class="lyoko-content">${contentHTML}</div>
@@ -443,7 +575,8 @@ const WindowManager = (() => {
             const statusbar = win.querySelector('.lyoko-statusbar');
 
             _makeDraggable(win, titlebar);
-            _makeSizeToggle(win, content, statusbar, opts);
+            const maxCtrl = _makeMaximize(win, content, opts);
+            _makeSizeToggle(win, content, statusbar, opts, maxCtrl);
             _makeResizable(win, opts);
         }
 
@@ -486,6 +619,7 @@ const WindowManager = (() => {
         }
 
         _updateBackdrop();
+        AudioHandler.playUI('open');
 
         const wrapper = win.querySelector('.lyoko-content-wrapper');
         _animateOpen(win, wrapper);
@@ -501,6 +635,11 @@ const WindowManager = (() => {
         // Удаляем из реестра сразу — повторный close(id) вернётся здесь
         delete _windows[id];
         _updateBackdrop();
+
+        AudioHandler.playUI('close');
+
+        // Флаг для _animateOpen — прерваться, если запущен параллельно
+        win.dataset.closing = '1';
 
         // Мобайл: автоматически перейти на другое окно
         if (IS_MOBILE) {

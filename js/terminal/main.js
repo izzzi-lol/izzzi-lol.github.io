@@ -6,6 +6,7 @@ const authOverlay = document.getElementById('auth-overlay');
 const authTerminal = document.getElementById('auth-terminal');
 const renderer = new StepRenderer();
 
+
 //ПОЯВЛЯЕТСЯ ЛИ ПЛАШКА BETA-BRANCH ИЛИ НЕТ
 let BetaBrach = false;
 
@@ -188,19 +189,18 @@ async function startAuth() {
 
 window.onload = async () => {
     document.getElementById('beta-badge').ariaHidden = !BetaBrach;
-
+    AudioHandler.init();
     TerminalAPI.lockInput();
     let hasSeenIntro = localStorage.getItem('has_seen_intro');
     if (!hasSeenIntro || (hasSeenIntro === 'false')) { // 5 минут
         document.body.classList.add('locked');
-
         await startAuth();
     } else {
         authOverlay.style.display = 'none';
         document.body.classList.remove('locked');
         input.focus();
     }
-
+    AudioHandler.playUI('ambient');
     await renderer.render("[SIZE=24][SCP FOUNDATION'S DOSSIER HUB][/SIZE][TIMER=1]",
         output, '', null, false);
     await renderer.render(`Введите команду [CMD="help"]"help"[/CMD], чтобы приступить.`,

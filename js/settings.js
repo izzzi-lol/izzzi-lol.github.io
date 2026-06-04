@@ -14,9 +14,11 @@ const Settings = (() => {
         scanlines:    true,
         vignette:     true,
         flicker:      true,
-        animSpeed:    38,      // мс/слово по умолчанию
+        animSpeed:    38,
         themeColor:   '#a200ff',
         terminalFont: 'JetBrains Mono',
+        uiVolume:     50,   // громкость UI-звуков (0–100)
+        echoVolume:   75,   // громкость ECHO-записей (0–100)
     };
 
     // ── Загрузка / сохранение ─────────────────────────────────────────────────
@@ -53,6 +55,9 @@ const Settings = (() => {
         // Шрифт терминала
         document.documentElement.style.setProperty('--mono-font',
             `'${cfg.terminalFont}', monospace`);
+
+        // Громкость аудио
+        if (typeof AudioHandler !== 'undefined') AudioHandler.applyVolumes(cfg);
     }
 
     // ── Построить HTML меню ───────────────────────────────────────────────────
@@ -82,6 +87,9 @@ const Settings = (() => {
                 </div>
                 <div class="lk-nav-item" data-panel="anim">
                     <span class="lk-nav-icon">▶</span> Анимация
+                </div>
+                <div class="lk-nav-item" data-panel="audio">
+                    <span class="lk-nav-icon">♪</span> Аудио
                 </div>
                 <div class="lk-nav-item" data-panel="theme">
                     <span class="lk-nav-icon">◉</span> Тема
@@ -138,6 +146,33 @@ const Settings = (() => {
                         </div>
                         <div class="lk-hint" style="margin-top:-8px">
                             5 = мгновенно · 38 = стандарт · 150 = атмосферно
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Аудио ── -->
+                <div class="lk-panel" data-panel="audio">
+                    <div>
+                        <div class="lk-group-label">Громкость</div>
+                        <div class="lk-row">
+                            <div class="lk-label">UI-звуки</div>
+                            <div class="lk-slider-wrap">
+                                <input type="range" class="lk-slider"
+                                    data-key="uiVolume"
+                                    min="0" max="100" step="5"
+                                    value="${cfg.uiVolume}">
+                                <span class="lk-slider-val">${cfg.uiVolume}</span>
+                            </div>
+                        </div>
+                        <div class="lk-row">
+                            <div class="lk-label">ECHO-записи</div>
+                            <div class="lk-slider-wrap">
+                                <input type="range" class="lk-slider"
+                                    data-key="echoVolume"
+                                    min="0" max="100" step="5"
+                                    value="${cfg.echoVolume}">
+                                <span class="lk-slider-val">${cfg.echoVolume}</span>
+                            </div>
                         </div>
                     </div>
                 </div>

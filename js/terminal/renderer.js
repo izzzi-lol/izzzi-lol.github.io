@@ -285,13 +285,27 @@ class StepRenderer {
         const cmdM   = cmdRe.exec(text);
         const useCMD = cmdM && (earliest === null || cmdM.index < earliest.index);
 
-        if (!earliest && !cmdM) return this._applyMD(text, state);
+        const browseRe = /\[BROWSE="([^"]+)"\](.*?)\[\/BROWSE\]/i;
+        const browseM  = browseRe.exec(text);
+        const useBROWSE = browseM && (earliest === null || browseM.index < earliest.index)
+            && (!cmdM || browseM.index < cmdM.index);
+
+        // Ранний выход — только если нет НИ ОДНОГО известного тега
+        if (!earliest && !cmdM && !browseM) return this._applyMD(text, state);
 
         if (useCMD) {
             const before  = text.slice(0, cmdM.index);
             const after   = text.slice(cmdM.index + cmdM[0].length);
             const safeCmd = cmdM[1].replace(/\\/g, '\\\\').replace(/'/g, "\\'");
             const tagHtml = `<span class="scp-cmd-link" onclick="TerminalAPI.typeAndExecute('${safeCmd}')">${this._applyMD(cmdM[2], state)}</span>`;
+            return this._applyMD(before, state) + tagHtml + this._parseSegment(after, state);
+        }
+
+        if (useBROWSE) {
+            const before      = text.slice(0, browseM.index);
+            const after       = text.slice(browseM.index + browseM[0].length);
+            const safeBrowse  = browseM[1].replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            const tagHtml     = `<span class="scp-browse-link" onclick="CmdBrowse.execute(['${safeBrowse}'], TerminalAPI)">[BROWSE: ${this._applyMD(browseM[2], state)}]</span>`;
             return this._applyMD(before, state) + tagHtml + this._parseSegment(after, state);
         }
 
@@ -611,7 +625,6 @@ class StepRenderer {
                     currentFootnote = document.createElement('div');
                     currentFootnote.className = 'footnote';
                     el = currentFootnote;
-
                 } else {
 
                     // ─────────────────────────────────────────────────────────
