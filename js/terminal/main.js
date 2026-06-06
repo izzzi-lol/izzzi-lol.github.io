@@ -202,6 +202,8 @@ window.onload = async () => {
         output, '', null, false);
     await handleUrlParams();
     TerminalAPI.unlockInput();
+	await renderer.render(`[COLOR=#00FF00][Доступна бета-версия сайта. [HREF=https://izzzi-lol.github.io/beta-branch/][ОПРОБОВАТЬ][/HREF]][/COLOR]`,
+		output, '', null, false);
 };
 
 // --- АВТОДОПОЛНЕНИЕ ---
