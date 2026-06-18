@@ -1,13 +1,9 @@
 [COLORCODES] Mainpage=#8ffe09; Quotes=#00d3f3; Tables=#00d3f3
 
-[DANGER]
-W.I.P. - Досье ещё не готово!
-В очередь сукины дети!
-[SIZE=12]_~ izzzi__[/SIZE]
-[/DANGER]
-
+[DANGER] W.I.P. - Досье ещё не готово! В очередь сукины дети! ~ izzzi_
+---
 [TITLE] УИЛЬЯМ БРЭТ
-
+---
 [H1] [CENTER] Личные данные
 [IMAGE] bratt_image.jpg || Визуальная интерпретация Уильяма Брэта. || right || 1
 [TABLE6]
