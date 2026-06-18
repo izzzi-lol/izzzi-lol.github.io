@@ -67,6 +67,7 @@ ID || 1488-Gamma-Tetsuro
 
 [H2] [CENTER] Деятельность в фонде
 Тэцуро разрабатывает продвинутые системы комплекса и защитные механизмы на случай непредвиденных обстоятельств.
+Хаято отдаёт подробные отчёты руководству во время и считается тем человеком, на которого можно положиться.
 
 [H2] [CENTER] Отношения
 
@@ -82,12 +83,12 @@ ID || 1488-Gamma-Tetsuro
 [/TABLE6]
 
 [FOOTNOTE]
-- Документация семьи Хаято — [BROWSE=https://docs.google.com/document/d/1gjeLvzXpFRsa0AILvcDJHboFolJHen2z-CbDV82mriY][DOCS][/BROWSE] _(кликабельно)_
+- Документация семьи Хаято — [BROWSE="https://docs.google.com/document/d/1gjeLvzXpFRsa0AILvcDJHboFolJHen2z-CbDV82mriY"][DOCS][/BROWSE] _(кликабельно)_
 - Досье на упомянутых лиц:
-- [BORWSE=https://docs.google.com/document/d/1gjeLvzXpFRsa0AILvcDJHboFolJHen2z-CbDV82mriY/edit?tab=t.y0zi1bnuuo4i]Минору Хаято[/BROWSE]
-- [BORWSE=https://docs.google.com/document/d/1-1fqK779wXtpt1-1n2dXpuSttDg5AGTaVYy9ebgW3JI/]Минами Хаято[/BROWSE]
-- [BORWSE=https://docs.google.com/document/d/1gjeLvzXpFRsa0AILvcDJHboFolJHen2z-CbDV82mriY/edit?tab=t.7nwaj69grqhq]Сакай Хаято[/BROWSE]
-- [BROWSE=https://docs.google.com/document/d/1pQzZq1s4EQqSnluFECZ4nJ0txcnikuBlq-E9FSyyWUI]Ханзо Хаято[/BROWSE]
-- [BROWSE=https://docs.google.com/document/d/1ex-pjGEWvrt3WWN6whOyJw5lJDW9c17_nsSxML0Tqfs/edit?tab=t.x8uyjtik6f0q]Логос Хаято[/BROWSE]
-- [BROWSE=https://docs.google.com/document/d/1RfUAUtri9Zi3qUja4UiBCiJPVI--akU4l7J6hUPtAho/edit?tab=t.0]Акаши Хаято[/BROWSE]
+- [BROWSE="https://docs.google.com/document/d/1gjeLvzXpFRsa0AILvcDJHboFolJHen2z-CbDV82mriY/edit?tab=t.y0zi1bnuuo4i"]Минору Хаято[/BROWSE]
+- [BROWSE="https://docs.google.com/document/d/1-1fqK779wXtpt1-1n2dXpuSttDg5AGTaVYy9ebgW3JI/"]Минами Хаято[/BROWSE]
+- [BROWSE="https://docs.google.com/document/d/1gjeLvzXpFRsa0AILvcDJHboFolJHen2z-CbDV82mriY/edit?tab=t.7nwaj69grqhq"]Сакай Хаято[/BROWSE]
+- [BROWSE="https://docs.google.com/document/d/1pQzZq1s4EQqSnluFECZ4nJ0txcnikuBlq-E9FSyyWUI"]Ханзо Хаято[/BROWSE]
+- [BROWSE="https://docs.google.com/document/d/1ex-pjGEWvrt3WWN6whOyJw5lJDW9c17_nsSxML0Tqfs/edit?tab=t.x8uyjtik6f0q"]Логос Хаято[/BROWSE]
+- [BROWSE="https://docs.google.com/document/d/1RfUAUtri9Zi3qUja4UiBCiJPVI--akU4l7J6hUPtAho/edit?tab=t.0"]Акаши Хаято[/BROWSE]
 [/FOOTNOTE]
