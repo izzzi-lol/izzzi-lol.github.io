@@ -1,3 +1,10 @@
+!COM $ExplorerDossierDescription
+!COM Author=izzzi_
+!COM Organization=CI
+!COM Profession=Operative
+!COM Status=Dead
+!COM end$
+
 [DANGER] ВНИМАНИЕ: ОБНАРУЖЕН ВЗЛОМ СЕТИ SCIPNET
 [DANGER] ИНФОРМАЦИЯ ПЕРЕХВАЧЕНА ИЗ СЕРВЕРОВ ГРУППЫ «БЕТА-ПХ»
 

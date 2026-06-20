@@ -1,3 +1,10 @@
+!COM $ExplorerDossierDescription
+!COM Author=izzzi_
+!COM Organization=CI
+!COM Profession=Operative
+!COM Status=Alive
+!COM end$
+
 [COLORCODES] Mainpage=#9E2A2B; Quotes=#1A221F; Tables=#C3A670;
 [DANGER] W.I.P. - Досье ещё не готово! В очередь сукины дети! ~ izzzi_
 [TITLE] «Джокер»

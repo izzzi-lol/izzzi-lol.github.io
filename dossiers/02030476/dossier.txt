@@ -1,3 +1,11 @@
+!COM $ExplorerDossierDescription
+!COM Author=izzzi_
+!COM Organization=SH
+!COM Profession=Scientist
+!COM Status=Alive
+!COM WIP
+!COM end$
+
 [COLORCODES] Mainpage=#8ffe09; Quotes=#00d3f3; Tables=#00d3f3
 
 [DANGER] W.I.P. - Досье ещё не готово! В очередь сукины дети! ~ izzzi_

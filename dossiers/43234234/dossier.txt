@@ -1,3 +1,11 @@
+!COM $ExplorerDossierDescription
+!COM Author=izzzi_
+!COM Organization=SCP
+!COM Profession=Scientist
+!COM Status=Alive
+!COM WIP
+!COM end$
+
 [TITLE] Соул Реймонд
 [COLORCODES] Mainpage=#4682B4; Quotes=#A8A8A8; Tables=#A0A000
 

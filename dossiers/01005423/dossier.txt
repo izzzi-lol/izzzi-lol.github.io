@@ -1,3 +1,10 @@
+!COM $ExplorerDossierDescription
+!COM Author=izzzi_
+!COM Organization=CI
+!COM Profession=Agent
+!COM Status=Alive
+!COM end$
+
 !COM | Анкета на Иззи Андерскора by izzzi_
 !COM | Версия: 2.1
 

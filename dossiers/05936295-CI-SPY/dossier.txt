@@ -1,3 +1,10 @@
+!COM $ExplorerDossierDescription
+!COM Author=izzzi_
+!COM Organization=CI
+!COM Profession=Agent
+!COM Status=Alive
+!COM end$
+
 [COLORCODES] Mainpage=#00FF41; Quotes=#404040; Tables=#003300
 [DANGER] ВНИМАНИЕ: ДОКУМЕНТ БАЗЫ ПОВСТАНЦЕВ ХАОСА. 
 [DANGER] ДОСТУП: ТОЛЬКО ДЛЯ ОПЕРАТИВНОГО КОМАНДОВАНИЯ ДЕЛЬТА-КОМАНДЫ.

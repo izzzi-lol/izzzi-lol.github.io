@@ -1,3 +1,10 @@
+!COM $ExplorerDossierDescription
+!COM Author=izzzi_
+!COM Organization=SCP
+!COM Profession=Manager
+!COM Status=Dead
+!COM end$
+
 [DANGER] ТРЕБУЕМЫЙ ДОПУСК: УРОВЕНЬ 3 (АРХИВ)
 [DANGER] СТАТУС СОТРУДНИКА: ЛИКВИДИРОВАН
 [DANGER] ПЕРСОНАЛ, КОНТАКТИРУЮЩИЙ С НИМ ДОЛЖЕН БЫТЬ ОБРАБОТАН АМНЕЗИАКОМ КЛАССА «C»

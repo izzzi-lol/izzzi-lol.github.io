@@ -1,3 +1,16 @@
+!COM $ExplorerDossierDescription
+!COM Author=LizzTea
+!COM Organization=SCP
+!COM Profession=Scientist
+!COM Status=Alive
+!COM end$
+
+!COM $ExplorerDossierDescription
+!COM Author=LizzTea
+!COM Organization=SCP
+!COM Profession=Scientist
+!COM end$
+
 [COLORCODES] Mainpage=#FF2400; Quotes=#800020; Tables=#080808
 
 [TITLE] Рейвен Синклер
