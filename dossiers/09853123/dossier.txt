@@ -1,0 +1,34 @@
+!COM $ExplorerDossierDescription
+!COM Author=izzzi_
+!COM Organization=SCP
+!COM Profession=Medic
+!COM Status=Alive
+!COM WIP
+!COM end$
+
+[COLORCODES] Mainpage=#255F00; Quotes=#0000FF; Tables=#AAAAAA
+[TITLE] Александр Мефедронов
+---
+[H1] [CENTER]  Информация
+[H2] [CENTER] Личные данные
+[IMAGE] mefedronov_image.jpg || Визуальная интерпретация Александра Мефедронова. || right
+[TABLE6]
+Характеристика || Описание
+Имя || Александр
+Фамилия || Мефедронов
+Возраст || 27 [COLOR=#808080](13.04.1998)[/COLOR]
+Место рождения || Минск, Беларусь
+Знак зодиака || Овен [COLOR=#808080](♈)[/COLOR]
+Группа крови || A+
+Рост || 184
+Вес || 87
+[/TABLE6]
+.
+[H2] [CENTER] Профиль сотрудника
+[TABLE6]
+Характеристика || Описание
+ID || 0911-Zulu-Mefedronov
+Должность || [COLOR=#FF69B4]Медик[/COLOR]
+Лояльность || [COLOR=#77F]Фонд SCP[/COLOR]
+Статус || [COLOR=#00FF00]Ведёт деятельность в фонде[/COLOR]
+[/TABLE6]
